@@ -1,0 +1,113 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.mtkachev.stomp</groupId>
+    <artifactId>parent</artifactId>
+    <version>1.0</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>server</module>
+    </modules>
+
+    <repositories>
+        <repository>
+            <id>scalatoolsorg</id>
+            <name>scala-tools.org</name>
+            <url>http://scala-tools.org/repo-releases/</url>
+        </repository>
+        <repository>
+            <id>twittercom</id>
+            <name>twitter.com</name>
+            <url>http://maven.twttr.com/</url>
+        </repository>
+        <repository>
+            <id>ibiblio</id>
+            <name>ibiblio</name>
+            <url>http://mirrors.ibiblio.org/pub/mirrors/maven2/</url>
+        </repository>
+        <repository>
+            <id>downloadjavanet</id>
+            <name>download.java.net</name>
+            <url>http://download.java.net/maven/2/</url>
+        </repository>
+        <repository>
+            <id>testingscalatoolsorg</id>
+            <name>testing.scala-tools.org</name>
+            <url>http://scala-tools.org/repo-releases/testing/</url>
+        </repository>
+        <repository>
+            <id>atlassian</id>
+            <name>atlassian</name>
+            <url>https://m2proxy.atlassian.com/repository/public/</url>
+        </repository>
+        <repository>
+            <id>reucon</id>
+            <name>reucon</name>
+            <url>http://maven.reucon.com/public/</url>
+        </repository>
+        <repository>
+            <id>oauthnet</id>
+            <name>oauth.net</name>
+            <url>http://oauth.googlecode.com/svn/code/maven/</url>
+        </repository>
+        <repository>
+            <id>powermockapi</id>
+            <name>powermock-api</name>
+            <url>http://powermock.googlecode.com/svn/repo/</url>
+        </repository>
+        <repository>
+            <id>ScalaToolsMaven2Repository</id>
+            <name>Scala-Tools Maven2 Repository</name>
+            <url>http://scala-tools.org/repo-releases/</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>scala-tools.org</id>
+            <name>Scala-Tools Maven2 Repository</name>
+            <url>http://scala-tools.org/repo-releases</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>1.8.5</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.scala-tools</groupId>
+                <artifactId>maven-scala-plugin</artifactId>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                </configuration>
+            </plugin>
+        </plugins>
+    </reporting>
+
+    <properties>
+        <scala.version>2.8.1</scala.version>
+    </properties>
+</project>
