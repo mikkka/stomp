@@ -17,10 +17,17 @@ import scala.None
 class Subscriber(val qm: DestinationManager, val session: IoSession,
                  val login: String, val password: String) extends Actor {
 
-  var subscriptionList = List.empty[Subscription]
-  var messageQueue = Queue.empty[Message]
+  private var subscriptions = List.empty[Subscription]
+  private var messages = Queue.empty[Message]
+  private var transactions = Map.empty[String, Transaction]
+  private var acks = List.empty[String]
+
   val sessionId = UUID.randomUUID.toString
-  var unacked: Option[String] = None
+
+  def subscriptionList = subscriptions
+  def messageList = messages
+  def transactionMap = transactions
+  def ackList = acks
 
   start
 
@@ -28,7 +35,6 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     loop {
       react {
         case msg: FrameMsg => {
-          //TODO: пришло сообщение от самого субскрайбера
           msg.frame match {
             case frame: Disconnect => {
               if(!session.isClosing) session.close(false)
@@ -37,29 +43,32 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
 
             case frame: Subscribe => {
               val subscription = new Subscription(frame.expression, this, frame.ackMode, frame.id)
-              subscriptionList = subscription :: subscriptionList
+              subscriptions = subscription :: subscriptions
 
               qm ! DestinationManager.Subscribe(subscription)
             }
             case frame: UnSubscribe => {
               val applyPartitions = (p: (List[Subscription], List[Subscription])) => {
-                subscriptionList = p._1
+                subscriptions = p._1
                 p._2.foreach(s => qm ! DestinationManager.UnSubscribe(s))
               }
               frame match {
-                case UnSubscribe(Some(id), None, _) => {
-                  applyPartitions(subscriptionList.partition(s => s.id != id))
-                }
                 case UnSubscribe(None, Some(expression), _) => {
-                  applyPartitions(subscriptionList.partition(s => s.expression != expression))
+                  applyPartitions(subscriptions.partition(s => s.expression != expression))
+                }
+                case UnSubscribe(id: Some[String], None, _) => {
+                  applyPartitions(subscriptions.partition(s => s.id != id))
                 }
                 case any =>
               }
             }
             case frame: Send => {
-              qm ! DestinationManager.Message(frame.destination, frame.contentLength, frame.body)
+              if(!doWithTx(frame.transactionId, tx => tx.send(frame))) {
+                send(frame)
+              }
             }
             case frame: Ack => {
+              doWithTx(frame.transactionId, tx => tx.ack(frame))
               ack(frame.messageId)
             }
           }
@@ -67,12 +76,12 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
         case msg: Recieve => {
           if(msg.subscription.acknowledge) {
             if(ackNeeded) {
-              messageQueue = messageQueue.enqueue(message(msg.subscription, msg.contentLength, msg.body))
+              messages = messages.enqueue(message(msg.subscription, msg.contentLength, msg.body))
             } else {
-              unack(sendMessage(msg.subscription, msg.contentLength, msg.body))
+              unack(receive(msg.subscription, msg.contentLength, msg.body))
             }
           } else {
-            sendMessage(msg.subscription, msg.contentLength, msg.body)
+            receive(msg.subscription, msg.contentLength, msg.body)
           }
         }
 
@@ -88,42 +97,74 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     }
   }
 
-  def ackNeeded = unacked match {
-    case Some(_) => true
-    case None => false
-  }
+  def ackNeeded = acks.isEmpty
+  def ackAllowed(messageId: String) = acks.contains(messageId)
+
+  def unack(m: Message) {acks = m.messageId :: acks}
 
   def ack(messageId: String) {
-    unacked match {
-      case Some(unackedMessaeId) => {
-        if(unackedMessaeId == messageId) {
-          unacked = None
-          if(!messageQueue.isEmpty) {
-            val (msg, mq) = messageQueue.dequeue
-            unack(sendMessage(msg))
-            messageQueue = mq
-          }
-        }
-      }
-      case None =>
+    if(ackAllowed(messageId)) {
+      acks = acks.filterNot(_ == messageId)
+      val (msg, mq) = messages.dequeue
+      receive(msg)
+      messages = mq
     }
   }
 
-  def unack(message: Message) {
-    unacked = Some(message.messageId)
+  def receive(subscription: Subscription, contentLength: Int, body: Array[Byte]): Message = {
+    receive(message(subscription, contentLength, body))
   }
 
-  def sendMessage(subscription: Subscription, contentLength: Int, body: Array[Byte]): Message = {
-    sendMessage(message(subscription, contentLength, body))
-  }
-
-  def sendMessage(msg: Message): Message = {
+  def receive(msg: Message): Message = {
     session.write(msg)
     msg
   }
 
+  def send(frame: Send) {
+    qm ! DestinationManager.Message(frame.destination, frame.contentLength, frame.body)
+  }
+
   def message(subscription: Subscription, contentLength: Int, body: Array[Byte]) =
     new Message(subscription.destination, UUID.randomUUID.toString, contentLength, body, Map.empty)
+
+  def commitTx(txKey: String) = {
+    doWithTx(Some(txKey), tx => tx.commt)
+  }
+
+  def abortTx(txKey: String) = {
+    doWithTx(Some(txKey), tx => tx.rollback)
+  }
+
+  def doWithTx(txKeyOpt: Option[String], f: Transaction => Unit): Boolean = txKeyOpt match {
+    case Some(txKey) => transactions.get(txKey) match {
+      case Some(tx) => f(tx); true
+      case _ => false
+    }
+    case _ => false
+  }
+
+  class Transaction {
+    var s = Queue.empty[Send]
+    var a = List.empty[String]
+
+    def commt() {
+      a = List.empty[String]
+      s.foreach(frame => send(frame))
+    }
+
+    def rollback() {
+      acks = acks ::: a
+      s = Queue.empty[Send]
+    }
+
+    def send(f: Send) {
+      s = s.enqueue(f)
+    }
+
+    def ack(ack: Ack) {
+      a = ack.messageId :: a
+    }
+  }
 }
 
 object Subscriber {
