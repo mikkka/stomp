@@ -11,7 +11,7 @@ import org.apache.mina.core.session.IoSession
 
 import org.mtkachev.stomp.server.Subscriber._
 import org.mtkachev.stomp.server.codec._
-import org.hamcrest.{Description, BaseMatcher, Matcher}
+import org.mtkachev.stomp.server.Matchers._
 
 /**
  * User: mick
@@ -70,26 +70,33 @@ class SubscriberSpecification extends Specification with Mockito {
       subscriber ! Subscriber.Recieve(subscriber.subscriptionList(0), 10, content)
       subscriber ! Subscriber.Recieve(subscriber.subscriptionList(1), 10, content)
 
-      def matchMessage(pattern: Message): Matcher[Message] = new BaseMatcher[Message] {
-        def matches(o: AnyRef) = {
-          val msg = o.asInstanceOf[Message]
-          msg.destination == pattern.destination && msg.contentLength == pattern.contentLength && msg.body == pattern.body
-        }
-        def describeTo(desc: Description) = {desc.appendText("should match " + pattern)}
-      }
-
       there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
       there was one(ioSession).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content, Map.empty))))
 
       subscriber.getState must(be(Actor.State.Suspended))
     }
-/*
     "ack" in {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, Map.empty))
-      subscriber.subscriptionList.size must eventually(10, 1 second)(be(1))
+      subscriber.subscriptionList.size must eventually(3, 1 second)(be(1))
 
       val content = "0123456789".getBytes
+      val subscription: Subscription = subscriber.subscriptionList(0)
+
+      subscriber ! Subscriber.Recieve(subscription, 10, content)
+      subscriber ! Subscriber.Recieve(subscription, 10, content)
+
+      subscriber.ackList.size must eventually(3, 1 second)(be(1))
+
+      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
+      subscriber ! FrameMsg(Ack(subscriber.ackList(0), None, Map.empty))
+
+      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
+      subscriber ! FrameMsg(Ack(subscriber.ackList(0), None, Map.empty))
+      subscriber.ackList.size must eventually(3, 1 second)(be(0))
+
+      subscriber.getState must(be(Actor.State.Suspended))
     }
+/*
     "tx commit" in {
     }
     "tx rollback" in {

@@ -97,7 +97,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     }
   }
 
-  def ackNeeded = acks.isEmpty
+  def ackNeeded = !acks.isEmpty
   def ackAllowed(messageId: String) = acks.contains(messageId)
 
   def unack(m: Message) {acks = m.messageId :: acks}
