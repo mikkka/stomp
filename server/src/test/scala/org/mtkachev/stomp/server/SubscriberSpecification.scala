@@ -38,10 +38,10 @@ class SubscriberSpecification extends Specification with Mockito {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, Map.empty))
       subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, Map.empty))
 
-      subscriber.subscriptionList.size must eventually(3, 1 second)(be(2))
+      subscriber.subscriptionMap.size must eventually(3, 1 second)(be(2))
 
-      subscriber.subscriptionList mustContain new Subscription("/foo/bar", subscriber, true, Some("foo"))
-      subscriber.subscriptionList mustContain new Subscription("/baz/ger", subscriber, false, None)
+      subscriber.subscriptionMap.keys mustContain new Subscription("/foo/bar", subscriber, true, Some("foo"))
+      subscriber.subscriptionMap.keys mustContain new Subscription("/baz/ger", subscriber, false, None)
 
       there was one(dm) ! DestinationManager.Subscribe(new Subscription("/foo/bar", subscriber, true, Some("foo")))
       there was one(dm) ! DestinationManager.Subscribe(new Subscription("/baz/ger", subscriber, false, None))
@@ -49,7 +49,7 @@ class SubscriberSpecification extends Specification with Mockito {
       subscriber ! FrameMsg(UnSubscribe(Some("foo"), None, Map.empty))
       subscriber ! FrameMsg(UnSubscribe(None, Some("/baz/ger"), Map.empty))
 
-      subscriber.subscriptionList.size must eventually(3, 1 second)(be(0))
+      subscriber.subscriptionMap.size must eventually(3, 1 second)(be(0))
 
       there was one(dm) ! DestinationManager.UnSubscribe(new Subscription("/foo/bar", subscriber, true, Some("foo")))
       there was one(dm) ! DestinationManager.UnSubscribe(new Subscription("/baz/ger", subscriber, false, None))
@@ -64,11 +64,11 @@ class SubscriberSpecification extends Specification with Mockito {
     "receive" in {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", false, Map.empty))
       subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, Map.empty))
-      subscriber.subscriptionList.size must eventually(3, 1 second)(be(2))
+      subscriber.subscriptionMap.size must eventually(3, 1 second)(be(2))
 
       val content = "0123456789".getBytes
-      subscriber ! Subscriber.Recieve(subscriber.subscriptionList(0), 10, content)
-      subscriber ! Subscriber.Recieve(subscriber.subscriptionList(1), 10, content)
+
+      subscriber.subscriptionMap.keys.foreach(s => subscriber ! Subscriber.Recieve(s, 10, content))
 
       there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
       there was one(ioSession).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content, Map.empty))))
@@ -76,30 +76,58 @@ class SubscriberSpecification extends Specification with Mockito {
       subscriber.getState must(be(Actor.State.Suspended))
     }
     "ack" in {
+/*
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, Map.empty))
-      subscriber.subscriptionList.size must eventually(3, 1 second)(be(1))
+      subscriber.subscriptionMap.size must eventually(3, 1 second)(be(1))
 
-      val content = "0123456789".getBytes
-      val subscription: Subscription = subscriber.subscriptionList(0)
+      val content1 = "1234567890".getBytes
+      val content2 = "2345678901".getBytes
+      val content3 = "3456789012".getBytes
+      val subscription: Subscription = subscriber.subscriptionMap(0)
 
-      subscriber ! Subscriber.Recieve(subscription, 10, content)
-      subscriber ! Subscriber.Recieve(subscription, 10, content)
+      subscriber ! Subscriber.Recieve(subscription, 10, content1)
+      subscriber ! Subscriber.Recieve(subscription, 10, content2)
+      subscriber ! Subscriber.Recieve(subscription, 10, content3)
 
       subscriber.ackList.size must eventually(3, 1 second)(be(1))
+      subscriber.messageList.size must eventually(3, 1 second)(be(2))
+      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content1, Map.empty))))
 
-      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
       subscriber ! FrameMsg(Ack(subscriber.ackList(0), None, Map.empty))
 
-      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
+      subscriber.ackList.size must eventually(3, 1 second)(be(1))
+      subscriber.messageList.size must eventually(3, 1 second)(be(1))
+      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content2, Map.empty))))
+
       subscriber ! FrameMsg(Ack(subscriber.ackList(0), None, Map.empty))
+
       subscriber.ackList.size must eventually(3, 1 second)(be(0))
+      subscriber.messageList.size must eventually(3, 1 second)(be(0))
+      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content3, Map.empty))))
 
       subscriber.getState must(be(Actor.State.Suspended))
+*/
     }
 /*
     "tx commit" in {
+      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, Map.empty))
+      subscriber ! FrameMsg(Begin("tx1", Map.empty))
+      subscriber ! FrameMsg(Begin("tx2", Map.empty))
+
+      subscriber.subscriptionMap.size must eventually(3, 1 second)(be(1))
+      subscriber.transactionMap.size must eventually(3, 1 second)(be(2))
     }
     "tx rollback" in {
+    }
+*/
+/*
+    "test mock call times" in {
+      ioSession.write("foo")
+      there was one(ioSession).write(anyString)
+      ioSession.write("bar")
+      there was one(ioSession).write(anyString)
+      ioSession.write("baz")
+      there was one(ioSession).write(anyString)
     }
 */
   }

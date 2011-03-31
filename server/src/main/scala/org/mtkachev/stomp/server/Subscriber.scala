@@ -17,17 +17,16 @@ import scala.None
 class Subscriber(val qm: DestinationManager, val session: IoSession,
                  val login: String, val password: String) extends Actor {
 
-  private var subscriptions = List.empty[Subscription]
-  private var messages = Queue.empty[Message]
+  private var subscriptions = Map.empty[Subscription, Queue[Message]]
+  private var ackIndex = Map.empty[String, Subscription]
+  private var acks = Map.empty[Subscription, List[String]]
   private var transactions = Map.empty[String, Transaction]
-  private var acks = List.empty[String]
 
   val sessionId = UUID.randomUUID.toString
 
-  def subscriptionList = subscriptions
-  def messageList = messages
+  def subscriptionMap = subscriptions
   def transactionMap = transactions
-  def ackList = acks
+  def ackMap = acks
 
   start
 
@@ -43,23 +42,23 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
 
             case frame: Subscribe => {
               val subscription = new Subscription(frame.expression, this, frame.ackMode, frame.id)
-              subscriptions = subscription :: subscriptions
+              subscriptions += (subscription -> Queue.empty)
 
               qm ! DestinationManager.Subscribe(subscription)
             }
             case frame: UnSubscribe => {
-              val applyPartitions = (p: (List[Subscription], List[Subscription])) => {
-                subscriptions = p._1
-                p._2.foreach(s => qm ! DestinationManager.UnSubscribe(s))
-              }
-              frame match {
+              val s = frame match {
                 case UnSubscribe(None, Some(expression), _) => {
-                  applyPartitions(subscriptions.partition(s => s.expression != expression))
+                  subscriptions.keys.find(s => s.expression != expression)
                 }
                 case UnSubscribe(id: Some[String], None, _) => {
-                  applyPartitions(subscriptions.partition(s => s.id != id))
+                  subscriptions.keys.find(s => s.id != id)
                 }
-                case any =>
+                case any => None
+              }
+              if(!s.isEmpty) {
+                qm ! DestinationManager.UnSubscribe(s.get)
+                subscriptions = subscriptions.filterKeys(_ != s.get)
               }
             }
             case frame: Send => {
@@ -75,10 +74,15 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
         }
         case msg: Recieve => {
           if(msg.subscription.acknowledge) {
-            if(ackNeeded) {
-              messages = messages.enqueue(message(msg.subscription, msg.contentLength, msg.body))
+            if(ackNeeded(msg.subscription)) {
+              val messages4s = subscriptions.get(msg.subscription)
+              if(messages4s.isEmpty) {
+                subscriptions += (msg.subscription -> messages4s.get.enqueue(message(msg.subscription, msg.contentLength, msg.body)))
+              } else {
+                subscriptions += (msg.subscription -> Queue(message(msg.subscription, msg.contentLength, msg.body)))
+              }
             } else {
-              unack(receive(msg.subscription, msg.contentLength, msg.body))
+              unack(msg.subscription, receive(msg.subscription, msg.contentLength, msg.body))
             }
           } else {
             receive(msg.subscription, msg.contentLength, msg.body)
@@ -97,17 +101,36 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     }
   }
 
-  def ackNeeded = !acks.isEmpty
-  def ackAllowed(messageId: String) = acks.contains(messageId)
+  def ackNeeded(s: Subscription) = {
+    val acks4s = acks.get(s)
+    !acks4s.isEmpty && !acks4s.get.isEmpty
+  }
 
-  def unack(m: Message) {acks = m.messageId :: acks}
+  def ackAllowed(s: Subscription, messageId: String) = {
+    val acks4s = acks.get(s)
+    acks4s.isEmpty || acks4s.get.contains(messageId)
+  }
+
+  def unack(s: Subscription, m: Message) {
+    val acks4s = acks.get(s)
+    if(acks4s.isEmpty) {
+      acks += (s -> List(m.messageId))
+    } else {
+      acks += (s -> (m.messageId :: acks4s.get))
+    }
+  }
 
   def ack(messageId: String) {
-    if(ackAllowed(messageId)) {
-      acks = acks.filterNot(_ == messageId)
-      val (msg, mq) = messages.dequeue
-      receive(msg)
-      messages = mq
+    val sOpt = ackIndex.get(messageId)
+    if(!sOpt.isEmpty && ackAllowed(sOpt.get, messageId)) {
+      val s = sOpt.get
+      acks += (s -> acks(s).filterNot(_ == messageId))
+      val messages4s = subscriptions.get(s)
+      if(!messages4s.isEmpty && !messages4s.get.isEmpty) {
+        val (msg, mq) = messages4s.get.dequeue
+        unack(s, receive(msg))
+        subscriptions += (s -> mq)
+      }
     }
   }
 
@@ -148,21 +171,29 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     var a = List.empty[String]
 
     def commt() {
+/*
       a = List.empty[String]
       s.foreach(frame => send(frame))
+*/
     }
 
     def rollback() {
-      acks = acks ::: a
+/*
       s = Queue.empty[Send]
+      acks = acks ::: a
+*/
     }
 
     def send(f: Send) {
+/*
       s = s.enqueue(f)
+*/
     }
 
     def ack(ack: Ack) {
+/*
       a = ack.messageId :: a
+*/
     }
   }
 }
