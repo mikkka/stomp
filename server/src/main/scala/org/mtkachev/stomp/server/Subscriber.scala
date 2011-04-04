@@ -27,6 +27,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
   def subscriptionMap = subscriptions
   def transactionMap = transactions
   def ackMap = acks
+  def ackIndexMap = ackIndex
 
   start
 
@@ -76,7 +77,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
           if(msg.subscription.acknowledge) {
             if(ackNeeded(msg.subscription)) {
               val messages4s = subscriptions.get(msg.subscription)
-              if(messages4s.isEmpty) {
+              if(!messages4s.isEmpty) {
                 subscriptions += (msg.subscription -> messages4s.get.enqueue(message(msg.subscription, msg.contentLength, msg.body)))
               } else {
                 subscriptions += (msg.subscription -> Queue(message(msg.subscription, msg.contentLength, msg.body)))
@@ -115,8 +116,10 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     val acks4s = acks.get(s)
     if(acks4s.isEmpty) {
       acks += (s -> List(m.messageId))
+      ackIndex += (m.messageId -> s)
     } else {
       acks += (s -> (m.messageId :: acks4s.get))
+      ackIndex += (m.messageId -> s)
     }
   }
 
@@ -125,6 +128,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     if(!sOpt.isEmpty && ackAllowed(sOpt.get, messageId)) {
       val s = sOpt.get
       acks += (s -> acks(s).filterNot(_ == messageId))
+      ackIndex = ackIndex.filterNot(_._1 == messageId)
       val messages4s = subscriptions.get(s)
       if(!messages4s.isEmpty && !messages4s.get.isEmpty) {
         val (msg, mq) = messages4s.get.dequeue
