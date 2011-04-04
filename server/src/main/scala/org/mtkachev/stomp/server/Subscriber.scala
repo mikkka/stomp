@@ -40,7 +40,6 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
               if(!session.isClosing) session.close(false)
               exit()
             }
-
             case frame: Subscribe => {
               val subscription = new Subscription(frame.expression, this, frame.ackMode, frame.id)
               subscriptions += (subscription -> Queue.empty)
@@ -70,6 +69,18 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
             case frame: Ack => {
               doWithTx(frame.transactionId, tx => tx.ack(frame))
               ack(frame.messageId)
+            }
+            case frame: Begin => {
+              transactions.get(frame.transactionId) match {
+                case None => transactions += (frame.transactionId -> new Transaction)
+                case _ =>
+              }
+            }
+            case frame: Commit => {
+              commitTx(frame.transactionId)
+            }
+            case frame: Abort => {
+              abortTx(frame.transactionId)
             }
           }
         }
@@ -112,14 +123,18 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     acks4s.isEmpty || acks4s.get.contains(messageId)
   }
 
-  def unack(s: Subscription, m: Message) {
+  def unack(s: Subscription, message: Message) {
+    unack(s, message.messageId)
+  }
+
+  def unack(s: Subscription, msgId: String) {
     val acks4s = acks.get(s)
     if(acks4s.isEmpty) {
-      acks += (s -> List(m.messageId))
-      ackIndex += (m.messageId -> s)
+      acks += (s -> List(msgId))
+      ackIndex += (msgId -> s)
     } else {
-      acks += (s -> (m.messageId :: acks4s.get))
-      ackIndex += (m.messageId -> s)
+      acks += (s -> (msgId :: acks4s.get))
+      ackIndex += (msgId -> s)
     }
   }
 
@@ -156,10 +171,12 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
 
   def commitTx(txKey: String) = {
     doWithTx(Some(txKey), tx => tx.commt)
+    transactions = transactions.filterNot(_._1 == txKey)
   }
 
   def abortTx(txKey: String) = {
     doWithTx(Some(txKey), tx => tx.rollback)
+    transactions = transactions.filterNot(_._1 == txKey)
   }
 
   def doWithTx(txKeyOpt: Option[String], f: Transaction => Unit): Boolean = txKeyOpt match {
@@ -172,32 +189,27 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
 
   class Transaction {
     var s = Queue.empty[Send]
-    var a = List.empty[String]
+    var a = List.empty[(Subscription, String)]
 
     def commt() {
-/*
-      a = List.empty[String]
-      s.foreach(frame => send(frame))
-*/
+      a = List.empty[(Subscription, String)]
+      for(frame <-s) send(frame)
     }
 
     def rollback() {
-/*
       s = Queue.empty[Send]
-      acks = acks ::: a
-*/
+      for((subscription, msgId) <- a) unack(subscription, msgId)
     }
 
     def send(f: Send) {
-/*
       s = s.enqueue(f)
-*/
     }
 
     def ack(ack: Ack) {
-/*
-      a = ack.messageId :: a
-*/
+      val sOpt = ackIndex.get(ack.messageId)
+      if(!sOpt.isEmpty) {
+        a = (sOpt.get, ack.messageId) :: a
+      }
     }
   }
 }
