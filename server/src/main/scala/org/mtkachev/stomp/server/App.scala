@@ -12,12 +12,12 @@ object App extends Application {
   val listenAddress = "0.0.0.0"
   val listenPort = 23456
 
-  def setMaxThreads = {
+  def setMaxThreads() {
     val maxThreads = (Runtime.getRuntime.availableProcessors * 2)
     System.setProperty("actors.maxPoolSize", maxThreads.toString)
   }
 
-  def initializeAcceptor = {
+  def initializeAcceptor() {
     var acceptorExecutor = Executors.newCachedThreadPool()
     var acceptor =
       new NioSocketAcceptor(acceptorExecutor, new NioProcessor(acceptorExecutor))
@@ -32,18 +32,18 @@ object App extends Application {
     acceptor.bind(new InetSocketAddress(listenAddress, listenPort))
   }
 
-  setMaxThreads
+  setMaxThreads()
 
   val queueManager = new DestinationManager()
   val subscriberManager = new SubscriberManager()
 
-  Runtime.getRuntime().addShutdownHook(new Thread() {
-    override def run = {
+  Runtime.getRuntime.addShutdownHook(new Thread() {
+    override def run() {
       queueManager ! DestinationManager.Stop()
       subscriberManager ! SubscriberManager.Stop()
     }
   })
 
-  initializeAcceptor
+  initializeAcceptor()
   println("stomp serv: up and listening on " + listenAddress + ":" + listenPort)
 }

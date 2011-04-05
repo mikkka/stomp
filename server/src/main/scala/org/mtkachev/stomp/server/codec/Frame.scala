@@ -30,7 +30,7 @@ case class ErrorIn(messageType: String, body: Array[Byte], headers: Map[String,S
 
 case class Connect(login: String, password: String, additional: Map[String,String]) extends InFrame(additional)
 
-case class ConnectedStateFrame(headers: Map[String,String]) extends InFrame(headers)
+abstract sealed class ConnectedStateFrame(headers: Map[String,String]) extends InFrame(headers)
 
 case class Send(
         destination: String,

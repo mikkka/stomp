@@ -18,9 +18,9 @@ class Destination(val name: String, private var subscriptions: List[Subscription
 
   def subscriptionList = subscriptions
 
-  start
+  start()
 
-  def act = {
+  override def act() {
     loop {
       react {
         case msg: AddSubscriber => {

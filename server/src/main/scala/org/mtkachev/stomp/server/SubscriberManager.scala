@@ -16,9 +16,9 @@ class SubscriberManager extends Actor {
 
   def subscriberList = subscribers
 
-  start
+  start()
 
-  def act = {
+  def act() {
     loop {
       react {
         case msg: Connect => {
@@ -36,7 +36,7 @@ class SubscriberManager extends Actor {
     }
   }
 
-  private def subscribe(queueManager: DestinationManager, session: IoSession, login: String, password: String) = {
+  private def subscribe(queueManager: DestinationManager, session: IoSession, login: String, password: String) {
     val subscriber = Subscriber(queueManager, session, login, password)
     session.setAttribute(Subscriber.IO_SESS_ATTRIBUTE, subscriber)
 
@@ -44,7 +44,7 @@ class SubscriberManager extends Actor {
     subscriber ! Subscriber.OnConnect()
   }
 
-  private def unSubscribe(s: Subscriber) = {
+  private def unSubscribe(s: Subscriber) {
     s ! Subscriber.Stop()
     subscribers = subscribers.filterNot(_ == s)
   }

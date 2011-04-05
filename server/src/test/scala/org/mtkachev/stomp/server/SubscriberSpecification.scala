@@ -89,8 +89,8 @@ class SubscriberSpecification extends Specification with Mockito {
       val content32 = "3456789012_2".getBytes
 
       val sIter = subscriber.subscriptionMap().keysIterator
-      val subscription1 = sIter.next
-      val subscription2 = sIter.next
+      val subscription1 = sIter.next()
+      val subscription2 = sIter.next()
 
       subscriber ! Subscriber.Recieve(subscription1, 10, content11)
       subscriber ! Subscriber.Recieve(subscription2, 10, content12)
@@ -120,7 +120,7 @@ class SubscriberSpecification extends Specification with Mockito {
       subscriber.subscriptionMap(subscription2).size must eventually(10, 100 millis)(be(2))
 
       for(i <- 1 to 6) {
-        val msgId = subscriber.ackIndexMap.keysIterator.next
+        val msgId = subscriber.ackIndexMap.keysIterator.next()
         subscriber ! FrameMsg(Ack(msgId, None, Map.empty))
         if(i < 6) {
           subscriber.ackIndexMap.keysIterator.next must eventually(10, 100 millis)(notBe(msgId))

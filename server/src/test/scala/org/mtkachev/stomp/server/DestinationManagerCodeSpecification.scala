@@ -63,14 +63,14 @@ object DestinationManagerCodeSpecification extends Specification with Mockito {
     "dispatch data message" in {
       val subscription = spy(Subscription("foo/bar", subscriber, true, Option("123")))
 
-      destinationManager ! DestinationManager.Message("foo/bar", 3, Array(01, 02, 03))
+      destinationManager ! DestinationManager.Message("foo/bar", 3, Array[Byte](01, 02, 03))
       destinationManager ! DestinationManager.Subscribe(subscription)
 
       destinationManager.queueMap("foo/bar").subscriptionList.size must eventually(10, 1 second) (be(1))
 
-      destinationManager ! DestinationManager.Message("foo/bar", 4, Array(01, 02, 03, 04))
+      destinationManager ! DestinationManager.Message("foo/bar", 4, Array[Byte](01, 02, 03, 04))
 
-      there was one(subscription).message(4, Array(01, 02, 03, 04))
+      there was one(subscription).message(4, Array[Byte](01, 02, 03, 04))
    }
   }
 }

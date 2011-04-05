@@ -21,7 +21,7 @@ object StompCodecSpecification extends Specification {
   private var written = new mutable.ListBuffer[Frame]
 
 
-  def quickDecode(decoder: Decoder, s: String): Unit = {
+  def quickDecode(decoder: Decoder, s: String) {
     decoder.decode(fakeSession, IoBuffer.wrap(s.getBytes), fakeDecoderOutput)
   }
 
@@ -120,8 +120,10 @@ transaction: gerTx
       written.clear()
       fakeSession = new DummySession
       fakeDecoderOutput = new ProtocolDecoderOutput {
-        override def flush(nextFilter: IoFilter.NextFilter, s: IoSession) = {}
-        override def write(obj: AnyRef) = written += obj.asInstanceOf[Frame]
+        def flush(nextFilter: IoFilter.NextFilter, s: IoSession) {}
+        def write(obj: AnyRef) {
+          written += obj.asInstanceOf[Frame]
+        }
       }
     }
 

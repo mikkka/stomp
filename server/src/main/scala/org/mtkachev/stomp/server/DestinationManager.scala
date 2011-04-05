@@ -16,9 +16,9 @@ class DestinationManager extends Actor {
   def queueMap = queues
   def subscriptionList = subscriptions
 
-  start
+  start()
 
-  def act = {
+  def act() {
     loop {
       react {
         case msg: Subscribe => {

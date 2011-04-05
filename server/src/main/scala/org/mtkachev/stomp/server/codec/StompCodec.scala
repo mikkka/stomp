@@ -16,10 +16,10 @@ object StompCodec {
   val maxHeadersSize = 20
 
   val encoder = new ProtocolEncoder {
-    def dispose(session: IoSession) = {
+    def dispose(session: IoSession) {
     }
 
-    def encode(session: IoSession, message: Any, out: ProtocolEncoderOutput) = {
+    def encode(session: IoSession, message: Any, out: ProtocolEncoderOutput) {
       message match {
         case s: String => {
           out.write(IoBuffer.wrap(s.getBytes))
@@ -32,7 +32,7 @@ object StompCodec {
                 append("session: ").append(f.sessionId).append("\n").
                 append("\n").append('\0')
 
-              out.write(IoBuffer.wrap(sb.toString.getBytes))
+              out.write(IoBuffer.wrap(sb.toString().getBytes))
 
             }
             case f: Message => {
@@ -41,7 +41,7 @@ object StompCodec {
                 append("message-id: ").append(f.messageId).append("\n").
                 append("\n")
 
-              val bytes = Array.concat(sb.toString.getBytes, f.body, Array[Byte](0))
+              val bytes = Array.concat(sb.toString().getBytes, f.body, Array[Byte](0))
               out.write(IoBuffer.wrap(bytes))
             }
           }

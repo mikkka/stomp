@@ -29,23 +29,26 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
   def ackMap = acks
   def ackIndexMap = ackIndex
 
-  start
+  start()
 
-  def act = {
+  def act() {
     loop {
       react {
+
         case msg: FrameMsg => {
           msg.frame match {
             case frame: Disconnect => {
               if(!session.isClosing) session.close(false)
               exit()
             }
+
             case frame: Subscribe => {
               val subscription = new Subscription(frame.expression, this, frame.ackMode, frame.id)
               subscriptions += (subscription -> Queue.empty)
 
               qm ! DestinationManager.Subscribe(subscription)
             }
+
             case frame: UnSubscribe => {
               val s = frame match {
                 case UnSubscribe(None, Some(expression), _) => {
@@ -61,29 +64,36 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
                 subscriptions = subscriptions.filterKeys(_ != s.get)
               }
             }
+
             case frame: Send => {
               if(!doWithTx(frame.transactionId, tx => tx.send(frame))) {
                 send(frame)
               }
             }
+
             case frame: Ack => {
               doWithTx(frame.transactionId, tx => tx.ack(frame))
               ack(frame.messageId)
             }
+
             case frame: Begin => {
               transactions.get(frame.transactionId) match {
                 case None => transactions += (frame.transactionId -> new Transaction)
                 case _ =>
               }
+              return
             }
+
             case frame: Commit => {
               commitTx(frame.transactionId)
             }
+
             case frame: Abort => {
               abortTx(frame.transactionId)
             }
           }
         }
+
         case msg: Recieve => {
           if(msg.subscription.acknowledge) {
             if(ackNeeded(msg.subscription)) {
@@ -93,21 +103,25 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
               } else {
                 subscriptions += (msg.subscription -> Queue(message(msg.subscription, msg.contentLength, msg.body)))
               }
+              return
             } else {
               unack(msg.subscription, receive(msg.subscription, msg.contentLength, msg.body))
             }
           } else {
             receive(msg.subscription, msg.contentLength, msg.body)
+            return
           }
         }
 
         case msg: OnConnect => {
           session.write(new Connected(this.sessionId, Map.empty))
+          return
         }
 
         case msg: Stop => {
           exit()
           session.close(false)
+          return
         }
       }
     }
@@ -167,15 +181,15 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
   }
 
   def message(subscription: Subscription, contentLength: Int, body: Array[Byte]) =
-    new Message(subscription.destination, UUID.randomUUID.toString, contentLength, body, Map.empty)
+    new Message(subscription.destination(), UUID.randomUUID.toString, contentLength, body, Map.empty)
 
-  def commitTx(txKey: String) = {
-    doWithTx(Some(txKey), tx => tx.commt)
+  def commitTx(txKey: String) {
+    doWithTx(Some(txKey), tx => tx.commt())
     transactions = transactions.filterNot(_._1 == txKey)
   }
 
-  def abortTx(txKey: String) = {
-    doWithTx(Some(txKey), tx => tx.rollback)
+  def abortTx(txKey: String) {
+    doWithTx(Some(txKey), tx => tx.rollback())
     transactions = transactions.filterNot(_._1 == txKey)
   }
 

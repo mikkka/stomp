@@ -20,9 +20,9 @@ class MessageHandler(val session: IoSession,
                      val subscriberManager: SubscriberManager
         ) extends Actor {
 
-  start
+  start()
 
-  def act = {
+  def act() {
     loop {
       react {
         case MinaMessage.SessionOpened
