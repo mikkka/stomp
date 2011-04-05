@@ -81,7 +81,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
                 case None => transactions += (frame.transactionId -> new Transaction)
                 case _ =>
               }
-              return
+              ()
             }
 
             case frame: Commit => {
@@ -103,25 +103,24 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
               } else {
                 subscriptions += (msg.subscription -> Queue(message(msg.subscription, msg.contentLength, msg.body)))
               }
-              return
             } else {
               unack(msg.subscription, receive(msg.subscription, msg.contentLength, msg.body))
             }
           } else {
             receive(msg.subscription, msg.contentLength, msg.body)
-            return
           }
+          ()
         }
 
         case msg: OnConnect => {
           session.write(new Connected(this.sessionId, Map.empty))
-          return
+          ()
         }
 
         case msg: Stop => {
           exit()
           session.close(false)
-          return
+          ()
         }
       }
     }
