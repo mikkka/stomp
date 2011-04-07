@@ -66,13 +66,13 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
             }
 
             case frame: Send => {
-              if(!doWithTx(frame.transactionId, tx => tx.send(frame))) {
+              if(!doWithTx(frame.transactionId, tx => tx.storeSend(frame))) {
                 send(frame)
               }
             }
 
             case frame: Ack => {
-              doWithTx(frame.transactionId, tx => tx.ack(frame))
+              doWithTx(frame.transactionId, tx => tx.storeAck(frame))
               ack(frame.messageId)
             }
 
@@ -158,7 +158,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
       acks += (s -> acks(s).filterNot(_ == messageId))
       ackIndex = ackIndex.filterNot(_._1 == messageId)
       val messages4s = subscriptions.get(s)
-      if(!messages4s.isEmpty && !messages4s.get.isEmpty) {
+      if(!messages4s.isEmpty && !messages4s.get.isEmpty && !ackNeeded(s)) {
         val (msg, mq) = messages4s.get.dequeue
         unack(s, receive(msg))
         subscriptions += (s -> mq)
@@ -207,6 +207,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
     def commt() {
       a = List.empty[(Subscription, String)]
       for(frame <-s) send(frame)
+
     }
 
     def rollback() {
@@ -214,11 +215,11 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
       for((subscription, msgId) <- a) unack(subscription, msgId)
     }
 
-    def send(f: Send) {
+    def storeSend(f: Send) {
       s = s.enqueue(f)
     }
 
-    def ack(ack: Ack) {
+    def storeAck(ack: Ack) {
       val sOpt = ackIndex.get(ack.messageId)
       if(!sOpt.isEmpty) {
         a = (sOpt.get, ack.messageId) :: a
