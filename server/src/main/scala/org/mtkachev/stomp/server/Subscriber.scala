@@ -201,18 +201,24 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
   }
 
   class Transaction {
-    var s = Queue.empty[Send]
-    var a = List.empty[(Subscription, String)]
+    var s: Queue[Send] = null
+    var a: List[(Subscription, String)] = null
+
+    clear()
+
+    def clear() {
+      a = List.empty[(Subscription, String)]
+      s = Queue.empty[Send]
+    }
 
     def commt() {
-      a = List.empty[(Subscription, String)]
       for(frame <-s) send(frame)
-
+      clear()
     }
 
     def rollback() {
-      s = Queue.empty[Send]
       for((subscription, msgId) <- a) unack(subscription, msgId)
+      clear()
     }
 
     def storeSend(f: Send) {
