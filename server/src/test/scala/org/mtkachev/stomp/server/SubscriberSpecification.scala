@@ -163,12 +163,12 @@ class SubscriberSpecification extends Specification with Mockito {
       waitForWorkout
 
       val firstMsgId = subscriber.ackIndexMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(firstMsgId, None, Map.empty))
+      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), Map.empty))
 
       waitForWorkout
 
       val secondMsgId = subscriber.ackIndexMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(secondMsgId, None, Map.empty))
+      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), Map.empty))
 
       subscriber.ackIndexMap.size must eventually(10, 100 millis)(be(0))
 
@@ -180,24 +180,45 @@ class SubscriberSpecification extends Specification with Mockito {
 
       subscriber ! FrameMsg(Commit("tx1", Map.empty))
 
-      subscriber.transactionMap.size must eventually(3, 1 second)(be(1))
+      subscriber.transactionMap.size must eventually(3, 1 second)(be(0))
       there was one(dm) ! DestinationManager.Message("foo/baz", 10, content3)
       subscriber.ackIndexMap.size mustBe 0
     }
-/*
     "tx rollback" in {
+      val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+      val content1 = "1234567890_1".getBytes
+      val content2 = "2345678901_1".getBytes
+      val content3 = "2345678901_1".getBytes
+
+      subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, Map.empty))
+      subscriber ! FrameMsg(Begin("tx1", Map.empty))
+
+      subscriber.subscriptionMap.size must eventually(3, 1 second)(be(1))
+      subscriber.transactionMap.size must eventually(3, 1 second)(be(1))
+
+      subscriber ! Subscriber.Recieve(subscription, 10, content1)
+      subscriber ! Subscriber.Recieve(subscription, 10, content2)
+
+      waitForWorkout
+
+      val firstMsgId = subscriber.ackIndexMap.keysIterator.next()
+      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), Map.empty))
+
+      waitForWorkout
+
+      val secondMsgId = subscriber.ackIndexMap.keysIterator.next()
+      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), Map.empty))
+
+      there was no(dm) ! any[DestinationManager.Message]
+
+      subscriber ! FrameMsg(Abort("tx1", Map.empty))
+
+      subscriber.transactionMap.size must eventually(3, 1 second)(be(0))
+      there was no(dm) ! any[DestinationManager.Message]
+
+      subscriber.ackIndexMap.size mustBe 2
+      subscriber.ackMap(subscription).size mustBe 2
     }
-*/
-/*
-    "test mock call times" in {
-      ioSession.write("foo")
-      there was one(ioSession).write(anyString)
-      ioSession.write("bar")
-      there was one(ioSession).write(anyString)
-      ioSession.write("baz")
-      there was one(ioSession).write(anyString)
-    }
-*/
   }
 
   def waitForWorkout {
