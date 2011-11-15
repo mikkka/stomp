@@ -8,7 +8,7 @@ import scala.actors.Actor
 import org.specs.util.TimeConversions._
 
 object DestinationManagerCodeSpecification extends Specification with Mockito {
-  private var destinationManager: DestinationManager = null
+/*  private var destinationManager: DestinationManager = null
   private var subscriber: Subscriber = null
 
   "queue manager" should {
@@ -72,5 +72,5 @@ object DestinationManagerCodeSpecification extends Specification with Mockito {
 
       there was one(subscription).message(4, Array[Byte](01, 02, 03, 04))
    }
-  }
+  }*/
 }

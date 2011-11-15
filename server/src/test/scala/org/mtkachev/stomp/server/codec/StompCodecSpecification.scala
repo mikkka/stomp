@@ -1,13 +1,7 @@
 package org.mtkachev.stomp.server.codec
 
-import org.mtkachev.stomp.server.codec._
-import org.specs._
-import org.apache.mina.filter.codec.ProtocolDecoderOutput
-import scala.collection.mutable
-import net.lag.naggati.Decoder
-import org.apache.mina.core.buffer.IoBuffer
-import org.apache.mina.core.filterchain.IoFilter
-import org.apache.mina.core.session.{DummySession, IoSession}
+import org.specs.Specification
+
 
 /**
  * User: mick
@@ -16,7 +10,7 @@ import org.apache.mina.core.session.{DummySession, IoSession}
  */
 
 object StompCodecSpecification extends Specification {
-  private var fakeSession: IoSession = null
+/*  private var fakeSession: IoSession = null
   private var fakeDecoderOutput: ProtocolDecoderOutput = null
   private var written = new mutable.ListBuffer[Frame]
 
@@ -413,5 +407,5 @@ transaction: gerTx
         }
       }
     }
-  }
+  }*/
 }

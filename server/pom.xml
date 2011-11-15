@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.mtkachev.stomp</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>stomp</artifactId>
         <version>1.0</version>
     </parent>
     <artifactId>server</artifactId>
@@ -57,14 +57,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>net.lag</groupId>
-            <artifactId>naggati_2.8.0</artifactId>
-            <version>0.7.4</version>
-        </dependency>
-        <dependency>
             <groupId>org.scala-tools.testing</groupId>
-            <artifactId>specs_2.8.0</artifactId>
-            <version>1.6.5</version>
+            <artifactId>specs_2.9.1</artifactId>
+            <version>1.6.9</version>
         </dependency>
     </dependencies>
 </project>

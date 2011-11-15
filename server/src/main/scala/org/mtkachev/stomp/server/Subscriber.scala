@@ -1,7 +1,6 @@
 package org.mtkachev.stomp.server
 
 import codec._
-import org.apache.mina.core.session.IoSession
 import actors.Actor
 import java.util.UUID
 import org.mtkachev.stomp.server.Subscriber._
@@ -14,7 +13,7 @@ import scala.None
  * Time: 20:08:57
  */
 
-class Subscriber(val qm: DestinationManager, val session: IoSession,
+class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
                  val login: String, val password: String) extends Actor {
 
   private var subscriptions = Map.empty[Subscription, Queue[Message]]
@@ -38,7 +37,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
         case msg: FrameMsg => {
           msg.frame match {
             case frame: Disconnect => {
-              if(!session.isClosing) session.close(false)
+              if(!transport.isClosing) transport.close()
               exit()
             }
 
@@ -113,13 +112,13 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
         }
 
         case msg: OnConnect => {
-          session.write(new Connected(this.sessionId, Map.empty))
+          transport.write(new Connected(this.sessionId, Map.empty))
           ()
         }
 
         case msg: Stop => {
           exit()
-          session.close(false)
+          transport.close()
           ()
         }
       }
@@ -171,7 +170,7 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
   }
 
   def receive(msg: Message): Message = {
-    session.write(msg)
+    transport.write(msg)
     msg
   }
 
@@ -237,8 +236,8 @@ class Subscriber(val qm: DestinationManager, val session: IoSession,
 object Subscriber {
   def IO_SESS_ATTRIBUTE = "IO.Subscriber"
 
-  def apply(qm: DestinationManager, session: IoSession, login: String, password: String) =
-    new Subscriber(qm, session, login, password)
+  def apply(qm: DestinationManager, transport: TransportCtx, login: String, password: String) =
+    new Subscriber(qm, transport, login, password)
 
 
   case class FrameMsg(frame: ConnectedStateFrame)

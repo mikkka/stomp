@@ -1,32 +1,33 @@
 package org.mtkachev.stomp.server.codec
 
-import net.lag.naggati._
-import net.lag.naggati.Steps._
 import collection.immutable.HashMap
+import org.mtkachev.scanetty.decode.Rules._
+import org.mtkachev.scanetty.decode.{Rule, Decoder}
 
 /**
  * User: mick
  * Date: 06.09.2010
  * Time: 18:27:43
  */
+class StompDecoder extends Decoder {
+  val charset = "ISO-8859-1"
 
-object StompDecoder {
-  val firstStep = readLine(true, "ISO-8859-1") { messageType =>
+  override val start = readLine(charset) { messageType =>
     startMessageDecode(messageType)
   }
 
-  def startMessageDecode(messageType: String): Step = {
+  def startMessageDecode(messageType: String): Rule = {
     if(!messageType.trim.isEmpty) {
       readNextHeader(messageType.trim(), new HashMap[String, String]())
     } else {
-      readLine(true, "ISO-8859-1") {messageType =>
+      readLine(charset) {messageType =>
         startMessageDecode(messageType)
       }
     }
   }
 
-  def readNextHeader(messageType: String, headers: Map[String, String]): Step = {
-    readLine(true, "ISO-8859-1") {line =>
+  def readNextHeader(messageType: String, headers: Map[String, String]): Rule = {
+    readLine(charset) {line =>
       if(!line.isEmpty) {
         val parts = line.split("\\:")
         if(parts.length == 2) {
@@ -40,26 +41,16 @@ object StompDecoder {
     }
   }
 
-  def readBody(messageType: String, headers: Map[String, String]): Step = {
-    val startBody = state.buffer.position
+  def readBody(messageType: String, headers: Map[String, String]): Rule = {
     if(headers.contains("content-length")) {
       def bytesToRead = headers("content-length").toInt + 1
-      readBytes(bytesToRead) { 
-        val byteBuffer = new Array[Byte](bytesToRead)
-        state.buffer.get(byteBuffer)
-        state.out.write(
-          FrameBuilder.composeFrame(messageType, headers, cutBody(byteBuffer)))
-        End
+      readBytes(bytesToRead) {bytes =>
+        stop(FrameBuilder.composeFrame(messageType, headers, cutBody(bytes)))
       }
     } else
-      readDelimiter(0.toByte) {read =>
-        val byteBuffer = new Array[Byte](read)
-        state.buffer.get(byteBuffer)
-        state.out.write(
-          FrameBuilder.composeFrame(
-            messageType, headers + ("content-length" -> (read - 1).toString), cutBody(byteBuffer)))
-
-        End
+      readUntil(0.toByte) {bytes =>
+        stop(FrameBuilder.composeFrame(
+            messageType, headers + ("content-length" -> (bytes.size - 1).toString), cutBody(bytes)))
       }
   }
 

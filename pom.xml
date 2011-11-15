@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.mtkachev.stomp</groupId>
-    <artifactId>parent</artifactId>
+    <artifactId>stomp</artifactId>
     <version>1.0</version>
     <packaging>pom</packaging>
 
@@ -18,11 +18,6 @@
             <url>http://scala-tools.org/repo-releases/</url>
         </repository>
         <repository>
-            <id>twittercom</id>
-            <name>twitter.com</name>
-            <url>http://maven.twttr.com/</url>
-        </repository>
-        <repository>
             <id>ibiblio</id>
             <name>ibiblio</name>
             <url>http://mirrors.ibiblio.org/pub/mirrors/maven2/</url>
@@ -33,34 +28,14 @@
             <url>http://download.java.net/maven/2/</url>
         </repository>
         <repository>
-            <id>testingscalatoolsorg</id>
-            <name>testing.scala-tools.org</name>
-            <url>http://scala-tools.org/repo-releases/testing/</url>
-        </repository>
-        <repository>
-            <id>atlassian</id>
-            <name>atlassian</name>
-            <url>https://m2proxy.atlassian.com/repository/public/</url>
-        </repository>
-        <repository>
-            <id>reucon</id>
-            <name>reucon</name>
-            <url>http://maven.reucon.com/public/</url>
-        </repository>
-        <repository>
-            <id>oauthnet</id>
-            <name>oauth.net</name>
-            <url>http://oauth.googlecode.com/svn/code/maven/</url>
-        </repository>
-        <repository>
             <id>powermockapi</id>
             <name>powermock-api</name>
             <url>http://powermock.googlecode.com/svn/repo/</url>
         </repository>
         <repository>
-            <id>ScalaToolsMaven2Repository</id>
-            <name>Scala-Tools Maven2 Repository</name>
-            <url>http://scala-tools.org/repo-releases/</url>
+            <id>jbossrepo</id>
+            <name>jbossrepo</name>
+            <url>https://repository.jboss.org/nexus/content/repositories/releases/</url>
         </repository>
     </repositories>
 
@@ -81,6 +56,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.jboss.netty</groupId>
+            <artifactId>netty</artifactId>
+            <version>3.2.6.Final</version>
+        </dependency>
+
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>3.8.1</version>
@@ -93,6 +74,7 @@
             <version>1.8.5</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <reporting>
@@ -108,6 +90,6 @@
     </reporting>
 
     <properties>
-        <scala.version>2.8.1</scala.version>
+        <scala.version>2.9.1</scala.version>
     </properties>
 </project>

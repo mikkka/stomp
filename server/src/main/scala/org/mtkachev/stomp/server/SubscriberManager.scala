@@ -2,7 +2,6 @@ package org.mtkachev.stomp.server
 
 import actors.Actor
 
-import org.apache.mina.core.session.IoSession
 import org.mtkachev.stomp.server.SubscriberManager._
 
 /**
@@ -22,7 +21,7 @@ class SubscriberManager extends Actor {
     loop {
       react {
         case msg: Connect => {
-          subscribe(msg.queueManager, msg.session, msg.login, msg.password)
+          subscribe(msg.queueManager, msg.transportCtx, msg.login, msg.password)
         }
         case msg: Disconnect => {
           unSubscribe(msg.subscriber)
@@ -36,9 +35,9 @@ class SubscriberManager extends Actor {
     }
   }
 
-  private def subscribe(queueManager: DestinationManager, session: IoSession, login: String, password: String) {
-    val subscriber = Subscriber(queueManager, session, login, password)
-    session.setAttribute(Subscriber.IO_SESS_ATTRIBUTE, subscriber)
+  private def subscribe(queueManager: DestinationManager, transportCtx: TransportCtx, login: String, password: String) {
+    val subscriber = Subscriber(queueManager, transportCtx, login, password)
+    transportCtx.setSubscriber(subscriber)
 
     subscribers = subscriber :: subscribers
     subscriber ! Subscriber.OnConnect()
@@ -51,7 +50,7 @@ class SubscriberManager extends Actor {
 }
 
 object SubscriberManager {
-  case class Connect(queueManager: DestinationManager, session: IoSession, login: String, password: String)
+  case class Connect(queueManager: DestinationManager, transportCtx: TransportCtx, login: String, password: String)
   case class Disconnect(subscriber: Subscriber)
   case class Stop()
 }
