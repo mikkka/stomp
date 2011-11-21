@@ -40,7 +40,7 @@ object Rules {
   }
 
   def readLine(encoding: String)(func: String => Rule): Rule = readUntil('\n'.toByte) {bytes =>
-    if(bytes.last == '\r'.toByte) {
+    if(bytes.size > 0 && bytes.last == '\r'.toByte) {
       func(new String(bytes.dropRight(1), encoding))
     } else {
       func(new String(bytes, encoding))
