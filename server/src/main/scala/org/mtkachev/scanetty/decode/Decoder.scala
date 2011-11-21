@@ -5,8 +5,9 @@ import org.jboss.netty.channel.{Channel, ChannelHandlerContext}
 import org.jboss.netty.buffer.ChannelBuffer
 
 abstract class Decoder extends ReplayingDecoder[VoidEnum] {
-  val start: Rule
   private[this] var current = start
+
+  def start: Rule
 
   override def decode(ctx: ChannelHandlerContext, channel: Channel, buffer: ChannelBuffer, state: VoidEnum) = {
     def innerDecode(state: DecodeState, rule: Rule): AnyRef = rule match {

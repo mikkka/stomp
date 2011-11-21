@@ -10,9 +10,9 @@ import org.mtkachev.scanetty.decode.{Rule, Decoder}
  * Time: 18:27:43
  */
 class StompDecoder extends Decoder {
-  val charset = "ISO-8859-1"
+  def charset = "ISO-8859-1"
 
-  override val start = readLine(charset) { messageType =>
+  override def start = readLine(charset) { messageType =>
     startMessageDecode(messageType)
   }
 
@@ -50,7 +50,7 @@ class StompDecoder extends Decoder {
     } else
       readUntil(0.toByte) {bytes =>
         stop(FrameBuilder.composeFrame(
-            messageType, headers + ("content-length" -> (bytes.size - 1).toString), cutBody(bytes)))
+            messageType, headers + ("content-length" -> (bytes.size).toString), bytes))
       }
   }
 
