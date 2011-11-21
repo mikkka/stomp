@@ -1,12 +1,8 @@
 package org.mtkachev.stomp.server.codec
 
-import scala.collection.mutable
-
-import org.specs._
 import org.specs.Specification
 import org.jboss.netty.handler.codec.embedder.DecoderEmbedder
 
-import org.mtkachev.stomp.server.codec._
 import org.jboss.netty.buffer.ChannelBuffers
 import org.jboss.netty.util.CharsetUtil
 
@@ -17,7 +13,7 @@ import org.jboss.netty.util.CharsetUtil
  * Time: 20:03:09
  */
 
-object StompCodecSpecification extends Specification {
+object StompDecoderSpecification extends Specification {
   val TEST_CONNECT =
 """CONNECT
 login: foo
