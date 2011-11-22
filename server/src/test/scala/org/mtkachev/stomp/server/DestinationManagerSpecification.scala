@@ -7,7 +7,7 @@ import scala.actors.Actor
 
 import org.specs.util.TimeConversions._
 
-object DestinationManagerCodeSpecification extends Specification with Mockito {
+object DestinationManagerSpecification extends Specification with Mockito {
   private var destinationManager: DestinationManager = null
   private var subscriber: Subscriber = null
   private var transportCtx: MockTransportCtx = null
@@ -24,6 +24,8 @@ object DestinationManagerCodeSpecification extends Specification with Mockito {
       if(subscriber != null) {
         subscriber ! Subscriber.Stop()
       }
+      subscriber.getState must eventually(10, 1 second)(be(Actor.State.Terminated))
+      scala.actors.Scheduler.impl.shutdown()
     }
     "handle subscribe message but no queue" in {
       val msg = Subscription("foo/bar", subscriber, true, Option("123"))
