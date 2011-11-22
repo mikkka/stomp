@@ -8,13 +8,15 @@ import scala.actors.Actor
 import org.specs.util.TimeConversions._
 
 object DestinationManagerCodeSpecification extends Specification with Mockito {
-/*  private var destinationManager: DestinationManager = null
+  private var destinationManager: DestinationManager = null
   private var subscriber: Subscriber = null
+  private var transportCtx: MockTransportCtx = null
 
   "queue manager" should {
     doBefore {
       destinationManager = new DestinationManager
-      subscriber = new Subscriber(destinationManager, null, "foo", "bar")
+      transportCtx = new MockTransportCtx
+      subscriber = new Subscriber(destinationManager, transportCtx, "foo", "bar")
     }
     doAfter {
       destinationManager ! DestinationManager.Stop()
@@ -23,7 +25,6 @@ object DestinationManagerCodeSpecification extends Specification with Mockito {
         subscriber ! Subscriber.Stop()
       }
     }
-
     "handle subscribe message but no queue" in {
       val msg = Subscription("foo/bar", subscriber, true, Option("123"))
       destinationManager ! DestinationManager.Subscribe(msg)
@@ -72,5 +73,5 @@ object DestinationManagerCodeSpecification extends Specification with Mockito {
 
       there was one(subscription).message(4, Array[Byte](01, 02, 03, 04))
    }
-  }*/
+  }
 }

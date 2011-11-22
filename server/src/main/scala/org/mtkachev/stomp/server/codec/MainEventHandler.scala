@@ -1,7 +1,7 @@
 package org.mtkachev.stomp.server.codec
 
 import org.jboss.netty.channel._
-import org.mtkachev.stomp.server.{DestinationManager, TransportCtx, SubscriberManager, Subscriber}
+import org.mtkachev.stomp.server._
 
 class MainEventHandler(val subscriberManager: SubscriberManager, val queueManager: DestinationManager) extends SimpleChannelHandler {
   override def messageReceived(ctx: ChannelHandlerContext, e: MessageEvent) {
@@ -21,7 +21,7 @@ class MainEventHandler(val subscriberManager: SubscriberManager, val queueManage
   }
 
   private def handle(msg : AnyRef, ctx: ChannelHandlerContext) {
-    TransportCtx.getSubscriber(ctx) match {
+    NettyTransportCtx.getSubscriber(ctx) match {
       case subscriber: Subscriber => msg match {
         case msg: ConnectedStateFrame => {
           subscriber ! Subscriber.FrameMsg(msg)
@@ -32,7 +32,7 @@ class MainEventHandler(val subscriberManager: SubscriberManager, val queueManage
       }
       case _ => msg match {
         case msg: Connect => {
-          subscriberManager ! SubscriberManager.Connect(queueManager, TransportCtx(ctx), msg.login, msg.password)
+          subscriberManager ! SubscriberManager.Connect(queueManager, NettyTransportCtx(ctx), msg.login, msg.password)
         }
         case any => {
           handleErrorMessage(msg)
