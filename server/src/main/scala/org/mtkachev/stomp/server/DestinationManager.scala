@@ -16,8 +16,6 @@ class DestinationManager extends Actor {
   def queueMap = queues
   def subscriptionList = subscriptions
 
-  start()
-
   def act() {
     loop {
       react {
@@ -68,9 +66,11 @@ class DestinationManager extends Actor {
 }
 
 object DestinationManager {
-  case class Subscribe(subscription: Subscription)
-  case class UnSubscribe(subscription: Subscription)
-  case class Message(destination: String, contentLength: Int, body: Array[Byte])
+  sealed case class Msg()
+
+  case class Subscribe(subscription: Subscription) extends Msg
+  case class UnSubscribe(subscription: Subscription) extends Msg
+  case class Message(destination: String, contentLength: Int, body: Array[Byte]) extends Msg
 
   case class Stop()
 }

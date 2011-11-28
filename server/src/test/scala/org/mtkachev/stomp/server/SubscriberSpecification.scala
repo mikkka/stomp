@@ -1,39 +1,36 @@
 package org.mtkachev.stomp.server
 
-import org.specs._
+import org.specs.Specification
 import org.specs.mock.Mockito
-import org.mockito.{Mockito => M}
-
 import scala.actors.Actor
 
 import org.specs.util.TimeConversions._
 
-/*
 import org.mtkachev.stomp.server.Subscriber._
 import org.mtkachev.stomp.server.codec._
 import org.mtkachev.stomp.server.Matchers._
-*/
-
 /**
  * User: mick
  * Date: 17.03.11
  * Time: 20:24
  */
 
-class SubscriberSpecification extends Specification with Mockito {
-/*  private var subscriber: Subscriber = null
-  private var dm: DestinationManager = null
-  private var ioSession: IoSession = null
+object SubscriberSpecification extends Specification with Mockito {
+  private var subscriber: Subscriber = null
+  private var dm: MockDestinationManager = null
+  private var transportCtx: TransportCtx = null
 
   "subscriber" should {
     doBefore {
-      ioSession = mock[IoSession]
-      dm = mock[DestinationManager]
-      subscriber = new Subscriber(dm, ioSession, "foo", "bar")
+      transportCtx = mock[TransportCtx]
+      dm = new MockDestinationManager
+      subscriber = new Subscriber(dm, transportCtx, "foo", "bar")
     }
     doAfter {
+      dm ! "poison"
       subscriber ! Subscriber.Stop()
       subscriber.getState must eventually(10, 100 millis)(be(Actor.State.Terminated))
+      scala.actors.Scheduler.impl.shutdown()
     }
     "subscrbe and unsubscribe" in {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, Map.empty))
@@ -44,22 +41,28 @@ class SubscriberSpecification extends Specification with Mockito {
       subscriber.subscriptionMap.keys mustContain Subscription("/foo/bar", subscriber, true, Some("foo"))
       subscriber.subscriptionMap.keys mustContain Subscription("/baz/ger", subscriber, false, None)
 
-      there was one(dm) ! DestinationManager.Subscribe(Subscription("/foo/bar", subscriber, true, Some("foo")))
-      there was one(dm) ! DestinationManager.Subscribe(Subscription("/baz/ger", subscriber, false, None))
+      dm.messages.size must_== 2
+      dm.messages mustContain DestinationManager.Subscribe(Subscription("/foo/bar", subscriber, true, Some("foo")))
+      dm.messages mustContain DestinationManager.Subscribe(Subscription("/baz/ger", subscriber, false, None))
 
       subscriber ! FrameMsg(UnSubscribe(Some("foo"), None, Map.empty))
       subscriber ! FrameMsg(UnSubscribe(None, Some("/baz/ger"), Map.empty))
 
       subscriber.subscriptionMap.size must eventually(10, 100 millis)(be(0))
 
-      there was one(dm) ! DestinationManager.UnSubscribe(Subscription("/foo/bar", subscriber, true, Some("foo")))
-      there was one(dm) ! DestinationManager.UnSubscribe(Subscription("/baz/ger", subscriber, false, None))
+      dm.messages.size must_== 4
+      dm.messages mustContain DestinationManager.UnSubscribe(Subscription("/foo/bar", subscriber, true, Some("foo")))
+      dm.messages mustContain DestinationManager.UnSubscribe(Subscription("/baz/ger", subscriber, false, None))
+
       subscriber.getState must(be(Actor.State.Suspended))
     }
     "send" in {
       val content = "0123456789".getBytes
       subscriber ! FrameMsg(Send("foo/bar", 10, None, content, Map.empty))
-      there was one(dm) ! DestinationManager.Message("foo/bar", 10, content)
+
+      dm.messages.size must eventually(10, 100 millis)(be(1))
+      dm.messages mustContain DestinationManager.Message("foo/bar", 10, content)
+
       subscriber.getState must(be(Actor.State.Suspended))
     }
     "receive" in {
@@ -71,8 +74,8 @@ class SubscriberSpecification extends Specification with Mockito {
 
       subscriber.subscriptionMap.keys.foreach(s => subscriber ! Subscriber.Recieve(s, 10, content))
 
-      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
-      there was one(ioSession).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content, Map.empty))))
 
       subscriber.getState must(be(Actor.State.Suspended))
     }
@@ -89,7 +92,7 @@ class SubscriberSpecification extends Specification with Mockito {
       val content22 = "2345678901_2".getBytes
       val content32 = "3456789012_2".getBytes
 
-      val sIter = subscriber.subscriptionMap().keysIterator
+      val sIter = subscriber.subscriptionMap.keysIterator
       val subscription1 = sIter.next()
       val subscription2 = sIter.next()
 
@@ -136,13 +139,13 @@ class SubscriberSpecification extends Specification with Mockito {
       subscriber.ackMap(subscription1).size mustBe 0
       subscriber.ackMap(subscription2).size mustBe 0
 
-      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content11, Map.empty))))
-      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content21, Map.empty))))
-      there was one(ioSession).write(argThat(matchMessage(new Message("foo", "", 10, content31, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content11, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content21, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content31, Map.empty))))
 
-      there was one(ioSession).write(argThat(matchMessage(new Message("baz", "", 10, content12, Map.empty))))
-      there was one(ioSession).write(argThat(matchMessage(new Message("baz", "", 10, content22, Map.empty))))
-      there was one(ioSession).write(argThat(matchMessage(new Message("baz", "", 10, content32, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content12, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content22, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content32, Map.empty))))
 
       subscriber.getState must(be(Actor.State.Suspended))
     }
@@ -177,12 +180,15 @@ class SubscriberSpecification extends Specification with Mockito {
 
       waitForWorkout
 
-      there was no(dm) ! any[DestinationManager.Message]
-
       subscriber ! FrameMsg(Commit("tx1", Map.empty))
 
       subscriber.transactionMap.size must eventually(3, 1 second)(be(0))
-      there was one(dm) ! DestinationManager.Message("foo/baz", 10, content3)
+
+      println(dm.messages)
+      dm.messages.size must eventually(10, 100 millis)(be(2))
+      dm.messages(0) must_== DestinationManager.Subscribe(subscription)
+      dm.messages(1) must_== DestinationManager.Message("foo/baz", 10, content3)
+
       subscriber.ackIndexMap.size mustBe 0
     }
     "tx rollback" in {
@@ -202,6 +208,8 @@ class SubscriberSpecification extends Specification with Mockito {
 
       waitForWorkout
 
+      dm.messages.size must eventually(10, 100 millis)(be(1))
+
       val firstMsgId = subscriber.ackIndexMap.keysIterator.next()
       subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), Map.empty))
 
@@ -210,12 +218,14 @@ class SubscriberSpecification extends Specification with Mockito {
       val secondMsgId = subscriber.ackIndexMap.keysIterator.next()
       subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), Map.empty))
 
-      there was no(dm) ! any[DestinationManager.Message]
+      dm.messages.size must eventually(10, 100 millis)(be(1))
 
       subscriber ! FrameMsg(Abort("tx1", Map.empty))
 
+      waitForWorkout
+
       subscriber.transactionMap.size must eventually(3, 1 second)(be(0))
-      there was no(dm) ! any[DestinationManager.Message]
+      dm.messages.size must eventually(10, 100 millis)(be(1))
 
       subscriber.ackIndexMap.size mustBe 2
       subscriber.ackMap(subscription).size mustBe 2
@@ -224,5 +234,20 @@ class SubscriberSpecification extends Specification with Mockito {
 
   def waitForWorkout {
     subscriber.getState must eventually(10, 100 millis)(be(Actor.State.Suspended))
-  }*/
+  }
+
+  class MockDestinationManager extends DestinationManager {
+    val messages = new scala.collection.mutable.ListBuffer[AnyRef]
+
+    start()
+
+    override def act() {
+      loop {
+        react {
+          case "poison" =>  exit()
+          case msg: AnyRef => messages += msg
+        }
+      }
+    }
+  }
 }

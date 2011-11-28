@@ -15,6 +15,7 @@ object DestinationManagerSpecification extends Specification with Mockito {
   "queue manager" should {
     doBefore {
       destinationManager = new DestinationManager
+      destinationManager.start()
       transportCtx = new MockTransportCtx
       subscriber = new Subscriber(destinationManager, transportCtx, "foo", "bar")
     }

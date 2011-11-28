@@ -19,6 +19,9 @@ object Launcher extends App {
   val destinationManager = new DestinationManager
   val subscriberManager = new SubscriberManager
 
+  destinationManager.start()
+  subscriberManager.start()
+
   val factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool())
   val bootstrap = new ServerBootstrap(factory)
 

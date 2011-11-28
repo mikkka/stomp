@@ -1,6 +1,6 @@
 package org.mtkachev.stomp.server
 
-//import org.mtkachev.stomp.server.codec.Message
+import org.mtkachev.stomp.server.codec.Message
 import org.hamcrest.{Description, BaseMatcher, Matcher}
 
 /**
@@ -10,7 +10,6 @@ import org.hamcrest.{Description, BaseMatcher, Matcher}
  */
 
 object Matchers {
-/*
   def matchMessage(pattern: Message): Matcher[Message] = new BaseMatcher[Message] {
     def matches(o: AnyRef) = {
       val msg = o.asInstanceOf[Message]
@@ -18,5 +17,4 @@ object Matchers {
     }
     def describeTo(desc: Description) = {desc.appendText("should match " + pattern)}
   }
-*/
 }
