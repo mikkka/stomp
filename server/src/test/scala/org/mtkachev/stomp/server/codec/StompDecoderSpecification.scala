@@ -1,6 +1,9 @@
 package org.mtkachev.stomp.server.codec
 
-import org.specs.Specification
+import org.specs2.execute._
+import org.specs2.mutable._
+import org.specs2.specification.Scope
+
 import org.jboss.netty.handler.codec.embedder.DecoderEmbedder
 
 import org.jboss.netty.buffer.ChannelBuffers
@@ -13,7 +16,7 @@ import org.jboss.netty.util.CharsetUtil
  * Time: 20:03:09
  */
 
-object StompDecoderSpecification extends Specification {
+class StompDecoderSpecification extends Specification {
   val TEST_CONNECT =
 """CONNECT
 login: foo
@@ -104,25 +107,10 @@ transaction: gerTx
 
 """ + '\0'
 
-  val embedder = new DecoderEmbedder[Frame](new StompDecoder)
-
   def byteBuff(str: String) = ChannelBuffers.copiedBuffer(str, CharsetUtil.ISO_8859_1)
 
   "StompCodec decoder " should {
-/*
-    doBefore {
-      written.clear()
-      fakeSession = new DummySession
-      fakeDecoderOutput = new ProtocolDecoderOutput {
-        def flush(nextFilter: IoFilter.NextFilter, s: IoSession) {}
-        def write(obj: AnyRef) {
-          written += obj.asInstanceOf[Frame]
-        }
-      }
-    }
-*/
-
-    "parse CONNECT command" in {
+    "parse CONNECT command" in new mock {
       embedder.offer(byteBuff(TEST_CONNECT))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -132,12 +120,13 @@ transaction: gerTx
           conn.password mustEqual "bar"
         }
         case _ => {
-          fail("expected CONNECT")
+          Failure("expected CONNECT")
         }
       }
+      success
     }
 
-    "parse SEND command with content length" in {
+    "parse SEND command with content length" in new mock {
       embedder.offer(byteBuff(TEST_SEND_WITH_LENGTH))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -149,12 +138,13 @@ transaction: gerTx
           send.transactionId mustEqual None
         }
         case _ => {
-          fail("expected SEND")
+          Failure("expected SEND")
         }
       }
+      success
     }
 
-    "parse SEND command without content length" in {
+    "parse SEND command without content length" in new mock {
       embedder.offer(byteBuff(TEST_SEND_WO_LENGTH))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -166,12 +156,13 @@ transaction: gerTx
           send.transactionId mustEqual Option("123")
         }
         case _ => {
-          fail("expected SEND")
+          Failure("expected SEND")
         }
       }
+      success
     }
 
-    "parse SUBSCRIBE simple" in {
+    "parse SUBSCRIBE simple" in new mock {
       embedder.offer(byteBuff(TEST_SUBSCRIBE_SIMPLE))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -182,12 +173,13 @@ transaction: gerTx
           subscribe.id mustEqual None
         }
         case _ => {
-          fail("expected SUBSCRIBE")
+          Failure("expected SUBSCRIBE")
         }
       }
+      success
     }
 
-    "parse SUBSCRIBE with client ack" in {
+    "parse SUBSCRIBE with client ack" in new mock {
       embedder.offer(byteBuff(TEST_SUBSCRIBE_ACK_CLIENT))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -198,12 +190,13 @@ transaction: gerTx
           subscribe.id mustEqual None
         }
         case _ => {
-          fail("expected SUBSCRIBE")
+          Failure("expected SUBSCRIBE")
         }
       }
+      success
     }
 
-    "parse SUBSCRIBE with id" in {
+    "parse SUBSCRIBE with id" in new mock {
       embedder.offer(byteBuff(TEST_SUBSCRIBE_WITH_ID))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -214,12 +207,13 @@ transaction: gerTx
           subscribe.id mustEqual Some("ger")
         }
         case _ => {
-          fail("expected SUBSCRIBE")
+          Failure("expected SUBSCRIBE")
         }
       }
+      success
     }
 
-    "parse UNSUBSCRIBE with id" in {
+    "parse UNSUBSCRIBE with id" in new mock {
       embedder.offer(byteBuff(TEST_UNSUBSCRIBE_WITH_ID))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -229,12 +223,13 @@ transaction: gerTx
           unsubscribe.id mustEqual Some("ger")
         }
         case _ => {
-          fail("expected UNSUBSCRIBE")
+          Failure("expected UNSUBSCRIBE")
         }
       }
+      success
     }
 
-    "parse UNSUBSCRIBE with destination" in {
+    "parse UNSUBSCRIBE with destination" in new mock {
       embedder.offer(byteBuff(TEST_UNSUBSCRIBE_WITH_DESTINATION))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -244,12 +239,13 @@ transaction: gerTx
           unsubscribe.id mustEqual None
         }
         case _ => {
-          fail("expected UNSUBSCRIBE")
+          Failure("expected UNSUBSCRIBE")
         }
       }
+      success
     }
 
-    "parse BEGIN" in {
+    "parse BEGIN" in new mock {
       embedder.offer(byteBuff(TEST_BEGIN))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -258,12 +254,13 @@ transaction: gerTx
           begin.transactionId mustEqual "gerTx"
         }
         case _ => {
-          fail("expected BEGIN")
+          Failure("expected BEGIN")
         }
       }
+      success
     }
 
-    "parse COMMIT" in {
+    "parse COMMIT" in new mock {
       embedder.offer(byteBuff(TEST_COMMIT))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -272,12 +269,13 @@ transaction: gerTx
           commit.transactionId mustEqual "gerTx"
         }
         case _ => {
-          fail("expected COMMIT")
+          Failure("expected COMMIT")
         }
       }
+      success
     }
 
-    "parse ACK with tx id" in {
+    "parse ACK with tx id" in new mock {
       embedder.offer(byteBuff(TEST_ACK))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -287,12 +285,13 @@ transaction: gerTx
           ack.messageId mustEqual "fooBarId"
         }
         case _ => {
-          fail("expected COMMIT")
+          Failure("expected COMMIT")
         }
       }
+      success
     }
 
-    "parse ACK without tx id" in {
+    "parse ACK without tx id" in new mock {
       embedder.offer(byteBuff(TEST_ACK_NO_TX))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -302,12 +301,13 @@ transaction: gerTx
           ack.messageId mustEqual "fooBarId"
         }
         case _ => {
-          fail("expected COMMIT")
+          Failure("expected COMMIT")
         }
       }
+      success
     }
 
-    "parse ABORT" in {
+    "parse ABORT" in new mock {
       embedder.offer(byteBuff(TEST_ABORT))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -316,12 +316,13 @@ transaction: gerTx
           abort.transactionId mustEqual "gerTx"
         }
         case _ => {
-          fail("expected COMMIT")
+          Failure("expected COMMIT")
         }
       }
+      success
     }
 
-    "parse DISCONNECT" in {
+    "parse DISCONNECT" in new mock {
       embedder.offer(byteBuff(TEST_DISCONNECT))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
@@ -329,12 +330,13 @@ transaction: gerTx
         case disconnect : Disconnect => {
         }
         case _ => {
-          fail("expected COMMIT")
+          Failure("expected COMMIT")
         }
       }
+      success
     }
 
-    "parse CONNECT SUBSCRIBE DISCONNECT" in {
+    "parse CONNECT SUBSCRIBE DISCONNECT" in new mock {
       embedder.offer(byteBuff(TEST_CONNECT + TEST_SUBSCRIBE_SIMPLE + TEST_SEND_WO_LENGTH +
               "\n\n" + TEST_DISCONNECT))
       val msgs = embedder.pollAll()
@@ -345,7 +347,7 @@ transaction: gerTx
         case connect : Connect => {
         }
         case _ => {
-          fail("expected Connect")
+          Failure("expected Connect")
         }
       }
       
@@ -357,7 +359,7 @@ transaction: gerTx
           subscribe.id mustEqual None
         }
         case _ => {
-          fail("expected CONNECT")
+          Failure("expected CONNECT")
         }
 
         def sendMsg = msgs(2)
@@ -365,7 +367,7 @@ transaction: gerTx
           case send : Send => {
           }
           case _ => {
-            fail("expected SEND")
+            Failure("expected SEND")
           }
         }
 
@@ -374,10 +376,15 @@ transaction: gerTx
           case disconnect : Disconnect => {
           }
           case _ => {
-            fail("expected DISCONNECT")
+            Failure("expected DISCONNECT")
           }
         }
       }
+      success
     }
+  }
+
+  trait mock extends Scope {
+    val embedder = new DecoderEmbedder[Frame](new StompDecoder)
   }
 }

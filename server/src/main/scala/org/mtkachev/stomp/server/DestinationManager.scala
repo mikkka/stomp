@@ -66,7 +66,7 @@ class DestinationManager extends Actor {
 }
 
 object DestinationManager {
-  sealed case class Msg()
+  sealed class Msg()
 
   case class Subscribe(subscription: Subscription) extends Msg
   case class UnSubscribe(subscription: Subscription) extends Msg

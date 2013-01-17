@@ -1,7 +1,8 @@
 package org.mtkachev.stomp.server
 
+import org.specs2.matcher.{Expectable, Matcher}
+
 import org.mtkachev.stomp.server.codec.Message
-import org.hamcrest.{Description, BaseMatcher, Matcher}
 
 /**
  * User: mick
@@ -10,11 +11,15 @@ import org.hamcrest.{Description, BaseMatcher, Matcher}
  */
 
 object Matchers {
-  def matchMessage(pattern: Message): Matcher[Message] = new BaseMatcher[Message] {
-    def matches(o: AnyRef) = {
-      val msg = o.asInstanceOf[Message]
-      msg.destination == pattern.destination && msg.contentLength == pattern.contentLength && msg.body == pattern.body
+  def matchMessage(pattern: Message) = new Matcher[Message] {
+    def apply[S <: Message](s: Expectable[S]) = {
+      result(
+        s.value.destination == pattern.destination
+          && s.value.contentLength == pattern.contentLength
+          && s.value.body == pattern.body,
+        s.description + " is matching pattern",
+        s.description + " is matching pattern",
+        s)
     }
-    def describeTo(desc: Description) = {desc.appendText("should match " + pattern)}
   }
 }
