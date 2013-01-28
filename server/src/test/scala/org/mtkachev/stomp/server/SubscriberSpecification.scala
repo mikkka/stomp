@@ -36,7 +36,7 @@ class SubscriberSpecification extends Specification {
       subscriber ! FrameMsg(UnSubscribe(Some("foo"), None, Map.empty))
       subscriber ! FrameMsg(UnSubscribe(None, Some("/baz/ger"), Map.empty))
 
-      subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_!==(0))
+      subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(0))
 
       dm.messages.size must_== 4
       dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/foo/bar", subscriber, true, Some("foo"))))
