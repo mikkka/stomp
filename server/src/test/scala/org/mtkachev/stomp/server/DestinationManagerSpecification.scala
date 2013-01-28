@@ -1,5 +1,6 @@
 package org.mtkachev.stomp.server
 
+import codec.Message
 import org.specs2.mutable._
 import org.specs2.mock.Mockito
 
@@ -7,6 +8,7 @@ import scala.actors.Actor
 import org.specs2.execute.{AsResult, StandardResults}
 import org.specs2.execute.Result._
 import org.specs2.specification.Scope
+import org.mtkachev.stomp.server.Matchers._
 
 class DestinationManagerSpecification extends Specification with Mockito {
   "queue manager" should {
@@ -56,7 +58,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     }
 
     "dispatch data message" in new DestinationManagerSpecScope {
-      val subscription = spy(Subscription("foo/bar", subscriber, true, Option("123")))
+      val subscription = Subscription("foo/bar", subscriber, true, Option("123"))
 
       destinationManager ! DestinationManager.Message("foo/bar", 3, Array[Byte](01, 02, 03))
       destinationManager ! DestinationManager.Subscribe(subscription)
@@ -65,14 +67,18 @@ class DestinationManagerSpecification extends Specification with Mockito {
 
       destinationManager ! DestinationManager.Message("foo/bar", 4, Array[Byte](01, 02, 03, 04))
 
-      there was one(subscription).message(4, Array[Byte](01, 02, 03, 04))
+      //there was one(subscription).message(mockEq(3), any[Array[Byte]])
+      there was one(transportCtx).write(any[Message])
+      there was one(transportCtx).write(argThat(matchMessage(
+        new Message("123", "", 4, Array[Byte](01, 02, 03, 04), Map.empty))))
 
       success
    }
   }
 
   trait DestinationManagerSpecScope extends Around with Scope {
-    val transportCtx = new MockTransportCtx
+    //val transportCtx = new MockTransportCtx
+    val transportCtx: TransportCtx = mock[TransportCtx]
     val destinationManager = new DestinationManager
     val subscriber = new Subscriber(destinationManager, transportCtx, "foo", "bar")
 
