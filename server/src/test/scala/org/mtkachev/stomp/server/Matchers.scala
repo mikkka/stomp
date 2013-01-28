@@ -16,9 +16,9 @@ object Matchers {
       result(
         s.value.destination == pattern.destination
           && s.value.contentLength == pattern.contentLength
-          && s.value.body == pattern.body,
-        s.description + " is matching pattern",
-        s.description + " is matching pattern",
+          && java.util.Arrays.equals(s.value.body, pattern.body),
+        pattern + " is matching pattern",
+        pattern + " is matching pattern",
         s)
     }
   }
