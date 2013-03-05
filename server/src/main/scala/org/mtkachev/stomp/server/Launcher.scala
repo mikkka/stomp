@@ -1,19 +1,16 @@
 package org.mtkachev.stomp.server
 
 import codec.{MainEventHandler, StompDecoder, StompEncoder}
-import java.util.concurrent.Executors
 
-import java.net.InetSocketAddress
+import io.netty.bootstrap.ServerBootstrap
 
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory
-import org.jboss.netty.bootstrap.ServerBootstrap
-import org.jboss.netty.channel._
+import io.netty.channel._
+import nio.NioEventLoopGroup
+import socket.nio.NioServerSocketChannel
+import socket.SocketChannel
 
 
 object Launcher extends App {
-  val charset = "ISO-8859-1"
-
-  val listenAddress = "0.0.0.0"
   val listenPort = 23456
 
   val destinationManager = new DestinationManager
@@ -22,21 +19,29 @@ object Launcher extends App {
   destinationManager.start()
   subscriberManager.start()
 
-  val factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool())
-  val bootstrap = new ServerBootstrap(factory)
+  val bootstrap = new ServerBootstrap()
+  try {
+  bootstrap.
+    group(new NioEventLoopGroup(), new NioEventLoopGroup()).
+    channel(classOf[NioServerSocketChannel]).
+    childHandler(new StompServerinitializer(destinationManager, subscriberManager)).
+    childOption(ChannelOption.TCP_NODELAY.asInstanceOf[ChannelOption[Any]], true).
+    childOption(ChannelOption.SO_KEEPALIVE.asInstanceOf[ChannelOption[Any]], true)
 
-  bootstrap.setPipelineFactory(
-    new ChannelPipelineFactory() {
-      override def getPipeline = Channels.pipeline(
-        new StompDecoder,
-        new MainEventHandler(subscriberManager, destinationManager),
-        new StompEncoder)
+    val ch = bootstrap.bind(listenPort).sync().channel();
+    println("stomp serv: starting on port " + listenPort)
+    ch.closeFuture().sync();
+  } finally {
+    bootstrap.shutdown();
+  }
+
+  class StompServerinitializer(destinationManager: DestinationManager,
+                               subscriberManager: SubscriberManager) extends ChannelInitializer[SocketChannel] {
+    def initChannel(ch: SocketChannel) {
+      val p = ch.pipeline()
+      p.addLast(new StompDecoder)
+      p.addLast(new MainEventHandler(subscriberManager, destinationManager))
+      p.addLast(new StompEncoder)
     }
-  )
-
-  bootstrap.setOption("child.tcpNoDelay", true);
-  bootstrap.setOption("child.keepAlive", true);
-  bootstrap.bind(new InetSocketAddress(listenPort));
-
-  println("stomp serv: up and listening on " + listenAddress + ":" + listenPort)
+  }
 }

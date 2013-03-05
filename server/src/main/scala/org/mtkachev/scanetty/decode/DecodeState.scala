@@ -1,6 +1,6 @@
 package org.mtkachev.scanetty.decode
 
-import org.jboss.netty.buffer.ChannelBuffer
-import org.jboss.netty.channel.ChannelHandlerContext
+import io.netty.buffer.ByteBuf
+import io.netty.channel.ChannelHandlerContext
 
-case class DecodeState(ctx: ChannelHandlerContext, buffer: ChannelBuffer)
+case class DecodeState(ctx: ChannelHandlerContext, buffer: ByteBuf)

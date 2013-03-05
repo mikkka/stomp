@@ -4,10 +4,12 @@ import org.specs2.execute._
 import org.specs2.mutable._
 import org.specs2.specification.Scope
 
-import org.jboss.netty.handler.codec.embedder.DecoderEmbedder
+import io.netty.channel.embedded.{EmbeddedByteChannel, EmbeddedMessageChannel}
 
-import org.jboss.netty.buffer.ChannelBuffers
-import org.jboss.netty.util.CharsetUtil
+import io.netty.buffer.{ByteBuf, Unpooled}
+import io.netty.util.CharsetUtil
+import org.mtkachev.stomp.server.codec.StompDecoder
+import collection.mutable.ListBuffer
 
 
 /**
@@ -107,7 +109,7 @@ transaction: gerTx
 
 """ + '\0'
 
-  def byteBuff(str: String) = ChannelBuffers.copiedBuffer(str, CharsetUtil.ISO_8859_1)
+  def byteBuff(str: String) = Unpooled.copiedBuffer(str, CharsetUtil.ISO_8859_1)
 
   "StompCodec decoder " should {
     "parse CONNECT command" in new mock {
@@ -385,6 +387,26 @@ transaction: gerTx
   }
 
   trait mock extends Scope {
-    val embedder = new DecoderEmbedder[Frame](new StompDecoder)
+    val embedder = new Embedder(new StompDecoder)
+
+    class Embedder(val decoder: StompDecoder) {
+      val channel = new EmbeddedByteChannel(decoder)
+
+      def offer(buf: ByteBuf) {
+        channel.writeInbound(buf)
+      }
+
+      def pollAll() = {
+        val retval = ListBuffer.empty[Any]
+        var msg: Any = null
+        do {
+          msg = channel.readInbound()
+          if(msg != null) {
+            retval += msg
+          }
+        } while (msg != null)
+        retval;
+      }
+    }
   }
 }

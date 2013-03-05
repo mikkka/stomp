@@ -1,15 +1,14 @@
 package org.mtkachev.stomp.server.codec
 
-import org.jboss.netty.handler.codec.oneone.OneToOneEncoder
-import org.jboss.netty.channel.{Channel, ChannelHandlerContext}
-import org.jboss.netty.buffer.ChannelBuffers._
+import io.netty.handler.codec.MessageToMessageEncoder
+import io.netty.channel.ChannelHandlerContext
 import java.nio.charset.Charset
+import io.netty.buffer.Unpooled._
 
-
-class StompEncoder extends OneToOneEncoder{
+class StompEncoder extends MessageToMessageEncoder[AnyRef] {
   val charset = Charset.forName("ISO-8859-1")
 
-  override def encode(ctx: ChannelHandlerContext, channel: Channel, msg: AnyRef) = msg match {
+  override def encode(ctx: ChannelHandlerContext, msg: AnyRef) = msg match {
     case s: String => {
       copiedBuffer(s, charset)
     }
@@ -29,6 +28,13 @@ class StompEncoder extends OneToOneEncoder{
             append("message-id: ").append(f.messageId).append("\n").
             append("\n")
           copiedBuffer(Array.concat(sb.toString().getBytes, f.body, Array[Byte](0)))
+        }
+        case f: Receipt => {
+          sb.append("RECEIPT\n").
+            append("receipt: ").append(f.receiptId).append("\n").
+            append("\n").append('\0')
+
+          copiedBuffer(sb, charset)
         }
       }
     }

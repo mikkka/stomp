@@ -1,26 +1,28 @@
 package org.mtkachev.stomp.server.codec
 
-import org.jboss.netty.channel._
+import io.netty.channel._
 import org.mtkachev.stomp.server._
 
-class MainEventHandler(val subscriberManager: SubscriberManager, val queueManager: DestinationManager) extends SimpleChannelHandler {
-  override def messageReceived(ctx: ChannelHandlerContext, e: MessageEvent) {
-    handle(e.getMessage, ctx)
+class MainEventHandler(val subscriberManager: SubscriberManager, val queueManager: DestinationManager)
+  extends ChannelInboundMessageHandlerAdapter[InFrame] {
+
+  override def messageReceived(ctx: ChannelHandlerContext, msg: InFrame) {
+    handle(msg, ctx)
   }
 
-  override def exceptionCaught(ctx: ChannelHandlerContext, e: ExceptionEvent) {
+  override def exceptionCaught(ctx: ChannelHandlerContext, e: Throwable) {
     e.getCause.printStackTrace();
-    e.getChannel.close();
+    ctx.channel().close();
   }
 
-  override def channelClosed(ctx: ChannelHandlerContext, e: ChannelStateEvent) {disconnect(ctx)}
-  override def channelDisconnected(ctx: ChannelHandlerContext, e: ChannelStateEvent) {disconnect(ctx)}
+  override def channelUnregistered(ctx: ChannelHandlerContext) {disconnect(ctx)}
+  override def channelInactive(ctx: ChannelHandlerContext) {disconnect(ctx)}
 
   def disconnect(ctx: ChannelHandlerContext) {
     handle(Disconnect(Map()), ctx)
   }
 
-  private def handle(msg : AnyRef, ctx: ChannelHandlerContext) {
+  private def handle(msg : InFrame, ctx: ChannelHandlerContext) {
     NettyTransportCtx.getSubscriber(ctx) match {
       case subscriber: Subscriber => msg match {
         case msg: ConnectedStateFrame => {

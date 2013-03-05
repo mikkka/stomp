@@ -1,15 +1,15 @@
 package org.mtkachev.scanetty.decode
 
-import org.jboss.netty.handler.codec.replay.{VoidEnum, ReplayingDecoder}
-import org.jboss.netty.channel.{Channel, ChannelHandlerContext}
-import org.jboss.netty.buffer.ChannelBuffer
+import io.netty.handler.codec.{ReplayingDecoder}
+import io.netty.channel.{Channel, ChannelHandlerContext}
+import io.netty.buffer.ByteBuf
 
-abstract class Decoder extends ReplayingDecoder[VoidEnum] {
+abstract class Decoder extends ReplayingDecoder[Void] {
   private[this] var current = start
 
   def start: Rule
 
-  override def decode(ctx: ChannelHandlerContext, channel: Channel, buffer: ChannelBuffer, state: VoidEnum) = {
+  override def decode(ctx: ChannelHandlerContext, buffer: ByteBuf) = {
     def innerDecode(state: DecodeState, rule: Rule): AnyRef = rule match {
       case st: Stop => st.res
       case r => {
