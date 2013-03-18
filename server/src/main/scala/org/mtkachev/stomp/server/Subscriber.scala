@@ -35,6 +35,13 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
       react {
 
         case msg: FrameMsg => {
+          msg.frame.receipt match {
+            case Some(receiptId) => {
+              receipt(receiptId)
+            }
+            case _ => {}
+          }
+
           msg.frame match {
             case frame: Disconnect => {
               if(!transport.isClosing) transport.close()
@@ -90,13 +97,6 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
             case frame: Abort => {
               abortTx(frame.transactionId)
             }
-          }
-
-          msg.frame.receipt match {
-            case Some(receiptId) => {
-
-            }
-            case _ => {}
           }
         }
 
@@ -179,6 +179,10 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   def receive(msg: Message): Message = {
     transport.write(msg)
     msg
+  }
+
+  def receipt(receiptId: String) {
+    transport.write(Receipt(receiptId))
   }
 
   def send(frame: Send) {
