@@ -91,6 +91,13 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
               abortTx(frame.transactionId)
             }
           }
+
+          msg.frame.receipt match {
+            case Some(receiptId) => {
+
+            }
+            case _ => {}
+          }
         }
 
         case msg: Recieve => {
@@ -112,7 +119,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
         }
 
         case msg: OnConnect => {
-          transport.write(new Connected(this.sessionId, Map.empty))
+          transport.write(new Connected(this.sessionId))
           ()
         }
 
@@ -179,7 +186,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   }
 
   def message(subscription: Subscription, contentLength: Int, body: Array[Byte]) =
-    new Message(subscription.destination(), UUID.randomUUID.toString, contentLength, body, Map.empty)
+    new Message(subscription.destination(), UUID.randomUUID.toString, contentLength, body)
 
   def commitTx(txKey: String) {
     doWithTx(Some(txKey), tx => tx.commt())

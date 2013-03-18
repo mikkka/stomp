@@ -19,7 +19,7 @@ class MainEventHandler(val subscriberManager: SubscriberManager, val queueManage
   override def channelInactive(ctx: ChannelHandlerContext) {disconnect(ctx)}
 
   def disconnect(ctx: ChannelHandlerContext) {
-    handle(Disconnect(Map()), ctx)
+    handle(Disconnect(None), ctx)
   }
 
   private def handle(msg : InFrame, ctx: ChannelHandlerContext) {

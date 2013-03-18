@@ -70,7 +70,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
       //there was one(subscription).message(mockEq(3), any[Array[Byte]])
       there was one(transportCtx).write(any[Message])
       there was one(transportCtx).write(argThat(matchMessage(
-        new Message("123", "", 4, Array[Byte](01, 02, 03, 04), Map.empty))))
+        new Message("123", "", 4, Array[Byte](01, 02, 03, 04)))))
 
       success
    }

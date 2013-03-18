@@ -8,7 +8,6 @@ import io.netty.channel.embedded.{EmbeddedByteChannel, EmbeddedMessageChannel}
 
 import io.netty.buffer.{ByteBuf, Unpooled}
 import io.netty.util.CharsetUtil
-import org.mtkachev.stomp.server.codec.StompDecoder
 import collection.mutable.ListBuffer
 
 

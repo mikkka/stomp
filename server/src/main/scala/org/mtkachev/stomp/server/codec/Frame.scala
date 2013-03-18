@@ -6,51 +6,41 @@ package org.mtkachev.stomp.server.codec
  * Time: 16:36:14
  */
 
-abstract sealed class Frame(additional: Map[String,String])
-abstract sealed class OutFrame(additional: Map[String,String]) extends Frame(additional)
+abstract class Frame()
+abstract class OutFrame() extends Frame()
 
-case class Connected(sessionId: String, additional: Map[String,String]) extends OutFrame(additional)
-
-case class Message(
-        destination: String,
-        messageId: String,
-        contentLength: Int,
-        body: Array[Byte],
-        additional: Map[String,String]
-        )
-        extends OutFrame(additional)
-
-case class Receipt(receiptId: String, additional: Map[String,String]) extends OutFrame(additional)
+case class Connected(sessionId: String) extends OutFrame()
+case class Message(destination: String, messageId: String, contentLength: Int, body: Array[Byte]) extends OutFrame()
+case class Receipt(receiptId: String) extends OutFrame()
 
 
 
-abstract sealed class InFrame(additional: Map[String,String]) extends Frame(additional)
+abstract sealed class InFrame() extends Frame()
 
-case class ErrorIn(messageType: String, body: Array[Byte], headers: Map[String,String]) extends InFrame(headers)
+case class ErrorIn(messageType: String, body: Array[Byte], headers: Map[String,String]) extends InFrame()
+case class Connect(login: String, password: String) extends InFrame()
 
-case class Connect(login: String, password: String, additional: Map[String,String]) extends InFrame(additional)
-
-abstract sealed class ConnectedStateFrame(headers: Map[String,String]) extends InFrame(headers)
+trait ConnectedStateFrame {
+  val receipt: Option[String]
+}
 
 case class Send(
         destination: String,
         contentLength: Int,
         transactionId: Option[String],
-        body: Array[Byte],
-        additional: Map[String,String]
-        )
-        extends ConnectedStateFrame(additional)
+        receipt: Option[String],
+        body: Array[Byte]) extends InFrame with ConnectedStateFrame
 
-case class Subscribe(id: Option[String], expression: String, ackMode: Boolean, additional: Map[String,String]) extends ConnectedStateFrame(additional)
+case class Subscribe(id: Option[String], expression: String, ackMode: Boolean, receipt: Option[String]) extends InFrame with ConnectedStateFrame
 
-case class UnSubscribe(id: Option[String], expression: Option[String], additional: Map[String,String]) extends ConnectedStateFrame(additional)
+case class UnSubscribe(id: Option[String], expression: Option[String], receipt: Option[String]) extends InFrame with ConnectedStateFrame
 
-case class Begin(transactionId: String, additional: Map[String,String]) extends ConnectedStateFrame(additional)
+case class Begin(transactionId: String, receipt: Option[String]) extends InFrame with ConnectedStateFrame
 
-case class Commit(transactionId: String, additional: Map[String,String]) extends ConnectedStateFrame(additional)
+case class Commit(transactionId: String, receipt: Option[String]) extends InFrame with ConnectedStateFrame
 
-case class Abort(transactionId: String, additional: Map[String,String]) extends ConnectedStateFrame(additional)
+case class Abort(transactionId: String, receipt: Option[String]) extends InFrame with ConnectedStateFrame
 
-case class Ack(messageId: String, transactionId: Option[String], additional: Map[String,String]) extends ConnectedStateFrame(additional)
+case class Ack(messageId: String, transactionId: Option[String], receipt: Option[String]) extends InFrame with ConnectedStateFrame
 
-case class Disconnect(additional: Map[String,String]) extends ConnectedStateFrame(additional)
+case class Disconnect(receipt: Option[String]) extends InFrame with ConnectedStateFrame

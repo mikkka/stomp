@@ -21,8 +21,8 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
 class SubscriberSpecification extends Specification {
   "subscriber" should {
     "subscrbe and unsubscribe" in new SubscriberSpecScope {
-      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, Map.empty))
-      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, Map.empty))
+      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
+      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, None))
 
       subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(2))
 
@@ -33,8 +33,8 @@ class SubscriberSpecification extends Specification {
       dm.messages must contain(DestinationManager.Subscribe(Subscription("/foo/bar", subscriber, true, Some("foo"))))
       dm.messages must contain(DestinationManager.Subscribe(Subscription("/baz/ger", subscriber, false, None)))
 
-      subscriber ! FrameMsg(UnSubscribe(Some("foo"), None, Map.empty))
-      subscriber ! FrameMsg(UnSubscribe(None, Some("/baz/ger"), Map.empty))
+      subscriber ! FrameMsg(UnSubscribe(Some("foo"), None, None))
+      subscriber ! FrameMsg(UnSubscribe(None, Some("/baz/ger"), None))
 
       subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(0))
 
@@ -48,7 +48,7 @@ class SubscriberSpecification extends Specification {
     }
     "send" in new SubscriberSpecScope {
       val content = "0123456789".getBytes
-      subscriber ! FrameMsg(Send("foo/bar", 10, None, content, Map.empty))
+      subscriber ! FrameMsg(Send("foo/bar", 10, None, None, content))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
       dm.messages must contain(DestinationManager.Message("foo/bar", 10, content))
@@ -58,24 +58,24 @@ class SubscriberSpecification extends Specification {
       success
     }
     "receive" in new SubscriberSpecScope {
-      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", false, Map.empty))
-      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, Map.empty))
+      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", false, None))
+      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, None))
       subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(2))
 
       val content = "0123456789".getBytes
 
       subscriber.subscriptionMap.keys.foreach(s => subscriber ! Subscriber.Recieve(s, 10, content))
 
-      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content, Map.empty))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content))))
 
       subscriber.getState must(be(Actor.State.Suspended))
 
       success
     }
     "ack" in new SubscriberSpecScope {
-      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, Map.empty))
-      subscriber ! FrameMsg(Subscribe(Some("baz"), "/baz/bar", true, Map.empty))
+      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
+      subscriber ! FrameMsg(Subscribe(Some("baz"), "/baz/bar", true, None))
       subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(2))
 
       val content11 = "1234567890_1".getBytes
@@ -119,7 +119,7 @@ class SubscriberSpecification extends Specification {
 
       for(i <- 1 to 6) {
         val msgId = subscriber.ackIndexMap.keysIterator.next()
-        subscriber ! FrameMsg(Ack(msgId, None, Map.empty))
+        subscriber ! FrameMsg(Ack(msgId, None, None))
         if(i < 6) {
           subscriber.ackIndexMap.keysIterator.next must eventually(10, 100 millis)(be_!=(msgId))
         } else {
@@ -133,13 +133,13 @@ class SubscriberSpecification extends Specification {
       subscriber.ackMap(subscription1).size must_== 0
       subscriber.ackMap(subscription2).size must_== 0
 
-      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content11, Map.empty))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content21, Map.empty))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content31, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content11))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content21))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content31))))
 
-      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content12, Map.empty))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content22, Map.empty))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content32, Map.empty))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content12))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content22))))
+      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content32))))
 
       subscriber.getState must(be(Actor.State.Suspended))
 
@@ -151,8 +151,8 @@ class SubscriberSpecification extends Specification {
       val content2 = "2345678901_1".getBytes
       val content3 = "2345678901_1".getBytes
 
-      subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, Map.empty))
-      subscriber ! FrameMsg(Begin("tx1", Map.empty))
+      subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, None))
+      subscriber ! FrameMsg(Begin("tx1", None))
 
       subscriber.subscriptionMap.size must eventually(3, 1 second)(be_==(1))
       subscriber.transactionMap.size must eventually(3, 1 second)(be_==(1))
@@ -163,20 +163,20 @@ class SubscriberSpecification extends Specification {
       waitForWorkout
 
       val firstMsgId = subscriber.ackIndexMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), Map.empty))
+      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), None))
 
       waitForWorkout
 
       val secondMsgId = subscriber.ackIndexMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), Map.empty))
+      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), None))
 
       subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(0))
 
-      subscriber ! FrameMsg(Send("foo/baz", 10, Some("tx1"), content3, Map.empty))
+      subscriber ! FrameMsg(Send("foo/baz", 10, Some("tx1"), None, content3))
 
       waitForWorkout
 
-      subscriber ! FrameMsg(Commit("tx1", Map.empty))
+      subscriber ! FrameMsg(Commit("tx1", None))
 
       subscriber.transactionMap.size must eventually(3, 1 second)(be_==(0))
 
@@ -195,8 +195,8 @@ class SubscriberSpecification extends Specification {
       val content2 = "2345678901_1".getBytes
       val content3 = "2345678901_1".getBytes
 
-      subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, Map.empty))
-      subscriber ! FrameMsg(Begin("tx1", Map.empty))
+      subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, None))
+      subscriber ! FrameMsg(Begin("tx1", None))
 
       subscriber.subscriptionMap.size must eventually(3, 1 second)(be_==(1))
       subscriber.transactionMap.size must eventually(3, 1 second)(be_==(1))
@@ -209,16 +209,16 @@ class SubscriberSpecification extends Specification {
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
 
       val firstMsgId = subscriber.ackIndexMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), Map.empty))
+      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), None))
 
       waitForWorkout
 
       val secondMsgId = subscriber.ackIndexMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), Map.empty))
+      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), None))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
 
-      subscriber ! FrameMsg(Abort("tx1", Map.empty))
+      subscriber ! FrameMsg(Abort("tx1", None))
 
       waitForWorkout
 
