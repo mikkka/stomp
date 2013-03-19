@@ -48,12 +48,13 @@ class SubscriberSpecification extends Specification {
     }
     "send" in new SubscriberSpecScope {
       val content = "0123456789".getBytes
-      subscriber ! FrameMsg(Send("foo/bar", 10, None, None, content))
+      subscriber ! FrameMsg(Send("foo/bar", 10, None, Some("foobar"), content))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
       dm.messages must contain(DestinationManager.Message("foo/bar", 10, content))
 
       subscriber.getState must(be(Actor.State.Suspended))
+      there was one(transportCtx).write(new Receipt("foobar"))
 
       success
     }
