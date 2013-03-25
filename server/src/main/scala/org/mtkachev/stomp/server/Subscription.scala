@@ -11,7 +11,7 @@ case class Subscription(expression: String, subscriber: Subscriber, acknowledge:
   def matches(queue: Destination): Boolean = queue.name == expression
 
   def message(contentLength: Int, body: Array[Byte]) {
-    subscriber ! Subscriber.Recieve(this, contentLength, body)
+    subscriber ! Subscriber.Receive(this, contentLength, body)
   }
 
   def destination() : String = id match {

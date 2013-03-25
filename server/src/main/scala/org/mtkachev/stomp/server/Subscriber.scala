@@ -100,7 +100,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
           }
         }
 
-        case msg: Recieve => {
+        case msg: Receive => {
           if(msg.subscription.acknowledge) {
             if(ackNeeded(msg.subscription)) {
               val messages4s = subscriptions.get(msg.subscription)
@@ -250,7 +250,7 @@ object Subscriber {
 
 
   case class FrameMsg(frame: ConnectedStateFrame)
-  case class Recieve(subscription: Subscription, contentLength: Int, body: Array[Byte])
+  case class Receive(subscription: Subscription, contentLength: Int, body: Array[Byte])
   case class Stop()
 
   case class OnConnect()

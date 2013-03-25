@@ -65,7 +65,7 @@ class SubscriberSpecification extends Specification {
 
       val content = "0123456789".getBytes
 
-      subscriber.subscriptionMap.keys.foreach(s => subscriber ! Subscriber.Recieve(s, 10, content))
+      subscriber.subscriptionMap.keys.foreach(s => subscriber ! Subscriber.Receive(s, 10, content))
 
       there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content))))
       there was one(transportCtx).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content))))
@@ -91,8 +91,8 @@ class SubscriberSpecification extends Specification {
       val subscription1 = sIter.next()
       val subscription2 = sIter.next()
 
-      subscriber ! Subscriber.Recieve(subscription1, 10, content11)
-      subscriber ! Subscriber.Recieve(subscription2, 10, content12)
+      subscriber ! Subscriber.Receive(subscription1, 10, content11)
+      subscriber ! Subscriber.Receive(subscription2, 10, content12)
 
       subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(2))
       subscriber.ackIndexMap.values must contain(Subscription("/foo/bar", subscriber, true, Some("foo")))
@@ -100,8 +100,8 @@ class SubscriberSpecification extends Specification {
       subscriber.ackMap(subscription1).size must_== 1
       subscriber.ackMap(subscription2).size must_== 1
 
-      subscriber ! Subscriber.Recieve(subscription1, 10, content21)
-      subscriber ! Subscriber.Recieve(subscription2, 10, content22)
+      subscriber ! Subscriber.Receive(subscription1, 10, content21)
+      subscriber ! Subscriber.Receive(subscription2, 10, content22)
 
       subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(2))
       subscriber.ackMap(subscription1).size must_== 1
@@ -109,8 +109,8 @@ class SubscriberSpecification extends Specification {
       subscriber.subscriptionMap(subscription1).size must eventually(10, 100 millis)(be_==(1))
       subscriber.subscriptionMap(subscription2).size must eventually(10, 100 millis)(be_==(1))
 
-      subscriber ! Subscriber.Recieve(subscription1, 10, content31)
-      subscriber ! Subscriber.Recieve(subscription2, 10, content32)
+      subscriber ! Subscriber.Receive(subscription1, 10, content31)
+      subscriber ! Subscriber.Receive(subscription2, 10, content32)
 
       subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(2))
       subscriber.ackMap(subscription1).size must_== 1
@@ -158,8 +158,8 @@ class SubscriberSpecification extends Specification {
       subscriber.subscriptionMap.size must eventually(3, 1 second)(be_==(1))
       subscriber.transactionMap.size must eventually(3, 1 second)(be_==(1))
 
-      subscriber ! Subscriber.Recieve(subscription, 10, content1)
-      subscriber ! Subscriber.Recieve(subscription, 10, content2)
+      subscriber ! Subscriber.Receive(subscription, 10, content1)
+      subscriber ! Subscriber.Receive(subscription, 10, content2)
 
       waitForWorkout
 
@@ -202,8 +202,8 @@ class SubscriberSpecification extends Specification {
       subscriber.subscriptionMap.size must eventually(3, 1 second)(be_==(1))
       subscriber.transactionMap.size must eventually(3, 1 second)(be_==(1))
 
-      subscriber ! Subscriber.Recieve(subscription, 10, content1)
-      subscriber ! Subscriber.Recieve(subscription, 10, content2)
+      subscriber ! Subscriber.Receive(subscription, 10, content1)
+      subscriber ! Subscriber.Receive(subscription, 10, content2)
 
       waitForWorkout
 
