@@ -245,8 +245,6 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
 }
 
 object Subscriber {
-  def IO_SESS_ATTRIBUTE = "IO.Subscriber"
-
   def apply(qm: DestinationManager, transport: TransportCtx, login: String, password: String) =
     new Subscriber(qm, transport, login, password)
 
