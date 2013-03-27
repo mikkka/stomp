@@ -250,7 +250,7 @@ object Subscriber {
 
 
   case class FrameMsg(frame: ConnectedStateFrame)
-  case class Receive(subscription: Subscription, contentLength: Int, body: Array[Byte])
+  case class Receive(destination: Destination, subscription: Subscription, contentLength: Int, body: Array[Byte])
   case class Stop()
 
   case class OnConnect()

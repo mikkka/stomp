@@ -39,7 +39,7 @@ class Destination(val name: String) extends Actor {
               dequeueMsg
             }
 
-            s.message(nextMsg.contentLength, nextMsg.body)
+            s.message(this, nextMsg.contentLength, nextMsg.body)
             readySubscriptions = q
           } else {
             messages = messages.enqueue(msg)

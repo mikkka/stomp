@@ -19,6 +19,7 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
  */
 
 class SubscriberSpecification extends Specification {
+/*
   "subscriber" should {
     "subscrbe and unsubscribe" in new SubscriberSpecScope {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
@@ -232,7 +233,7 @@ class SubscriberSpecification extends Specification {
       success
     }
   }
-
+*/
   trait SubscriberSpecScope extends Around with Scope with Mockito {
     val dm: MockDestinationManager = new MockDestinationManager
     val transportCtx: TransportCtx = mock[TransportCtx]

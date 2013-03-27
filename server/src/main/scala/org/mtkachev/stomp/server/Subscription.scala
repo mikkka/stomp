@@ -10,8 +10,8 @@ package org.mtkachev.stomp.server
 case class Subscription(expression: String, subscriber: Subscriber, acknowledge: Boolean, id: Option[String]) {
   def matches(queue: Destination): Boolean = queue.name == expression
 
-  def message(contentLength: Int, body: Array[Byte]) {
-    subscriber ! Subscriber.Receive(this, contentLength, body)
+  def message(destination: Destination, contentLength: Int, body: Array[Byte]) {
+    subscriber ! Subscriber.Receive(destination, this, contentLength, body)
   }
 
   val destination = id match {
