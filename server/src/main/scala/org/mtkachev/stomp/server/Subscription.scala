@@ -14,7 +14,7 @@ case class Subscription(expression: String, subscriber: Subscriber, acknowledge:
     subscriber ! Subscriber.Receive(this, contentLength, body)
   }
 
-  def destination() : String = id match {
+  val destination = id match {
     case Some(dest) => dest
     case None => expression
   }

@@ -190,7 +190,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   }
 
   def message(subscription: Subscription, contentLength: Int, body: Array[Byte]) =
-    new Message(subscription.destination(), UUID.randomUUID.toString, contentLength, body)
+    new Message(subscription.destination, UUID.randomUUID.toString, contentLength, body)
 
   def commitTx(txKey: String) {
     doWithTx(Some(txKey), tx => tx.commt())
