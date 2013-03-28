@@ -25,7 +25,7 @@ class DestinationManager extends Actor {
         case msg: UnSubscribe => {
           unSubscribe(msg.subscription)
         }
-        case msg: Message => {
+        case msg: Dispatch => {
           dispatchMessage(msg)
         }
         case msg: Stop => {
@@ -50,16 +50,16 @@ class DestinationManager extends Actor {
       foreach{case(_, queue) => queue ! Destination.RemoveSubscriber(subscription)}
   }
 
-  private def dispatchMessage(msg: Message) {
+  private def dispatchMessage(msg: Dispatch) {
     queues.get(msg.destination) match {
       case Some(queue) => {
-        queue ! Destination.Message(msg.contentLength, msg.body)
+        queue ! Destination.Dispatch(msg.envelope)
       }
       case None => {
         val queue = new Destination(msg.destination)
         queues = queues + (msg.destination -> queue)
         subscriptions.filter(s => s.matches(queue)).foreach(s => queue ! Destination.AddSubscriber(s))
-        queue ! Destination.Message(msg.contentLength, msg.body)
+        queue ! Destination.Dispatch(msg.envelope)
       }
     }
   }
@@ -70,7 +70,7 @@ object DestinationManager {
 
   case class Subscribe(subscription: Subscription) extends Msg
   case class UnSubscribe(subscription: Subscription) extends Msg
-  case class Message(destination: String, contentLength: Int, body: Array[Byte]) extends Msg
+  case class Dispatch(destination: String, envelope: Envelope) extends Msg
 
   case class Stop()
 }

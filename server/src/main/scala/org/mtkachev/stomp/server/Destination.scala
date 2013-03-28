@@ -13,7 +13,7 @@ import collection.immutable.Queue
 class Destination(val name: String) extends Actor {
   private var subscriptions: List[Subscription] = List.empty
   private var readySubscriptions: Queue[Subscription] = Queue.empty
-  private var messages: Queue[Message] = Queue.empty
+  private var messages: Queue[Dispatch] = Queue.empty
 
   def subscriptionList = subscriptions
   def readySubscriptionQueue = readySubscriptions
@@ -30,7 +30,7 @@ class Destination(val name: String) extends Actor {
         case msg: RemoveSubscriber => {
           removeSubscription(msg.subscription)
         }
-        case msg: Message => {
+        case msg: Dispatch => {
           if (!readySubscriptionQueue.isEmpty) {
             val (s, q) = readySubscriptions.dequeue
             val nextMsg = if (messageQueue.isEmpty) msg
@@ -39,7 +39,7 @@ class Destination(val name: String) extends Actor {
               dequeueMsg
             }
 
-            s.message(this, nextMsg.contentLength, nextMsg.body)
+            s.message(this, nextMsg.envelope)
             readySubscriptions = q
           } else {
             messages = messages.enqueue(msg)
@@ -70,6 +70,7 @@ class Destination(val name: String) extends Actor {
 
   private def addSubscription(subscription: Subscription) {
     subscriptions = subscription :: subscriptions
+    subscription.subscribed(this)
   }
 
   private def removeSubscription(subscription: Subscription) {
@@ -82,10 +83,11 @@ class Destination(val name: String) extends Actor {
 object Destination {
   case class AddSubscriber(subscription: Subscription)
   case class RemoveSubscriber(subscription: Subscription)
-  case class Message(contentLength: Int, body: Array[Byte])
+
+  case class Dispatch(envelope: Envelope)
 
   case class Ack(subscription: Subscription, messagesId: List[String])
-  case class Fail(subscription: Subscription, messages: List[Message])
+  case class Fail(subscription: Subscription, messages: List[Dispatch])
   case class Ready(subscription: Subscription)
 
   case class Stop()

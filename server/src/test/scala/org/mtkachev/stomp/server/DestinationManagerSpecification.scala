@@ -24,7 +24,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     }
 
     "handle message dispatch for new queue" in new DestinationManagerSpecScope {
-      destinationManager ! DestinationManager.Message("foo/bar", 0, Array.empty[Byte])
+      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(0, Array.empty[Byte]))
       destinationManager.queueMap.size must eventually(10, 1 second) (be_==(1))
 
       success
@@ -33,7 +33,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     "handle subscribe message for existing queue" in new DestinationManagerSpecScope {
       val subscription = Subscription("foo/bar", subscriber, true, Option("123"))
 
-      destinationManager ! DestinationManager.Message("foo/bar", 0, Array.empty[Byte])
+      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(0, Array.empty[Byte]))
       destinationManager ! DestinationManager.Subscribe(subscription)
 
       destinationManager.subscriptionList.size must eventually(10, 1 second) (be_==(1))
@@ -46,7 +46,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     "handle unsubscribe message for existing queue" in new DestinationManagerSpecScope {
       val subscription = Subscription("foo/bar", subscriber, true, Option("123"))
 
-      destinationManager ! DestinationManager.Message("foo/bar", 0, Array.empty[Byte])
+      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(0, Array.empty[Byte]))
       destinationManager ! DestinationManager.Subscribe(subscription)
       destinationManager ! DestinationManager.UnSubscribe(subscription)
 
@@ -60,12 +60,12 @@ class DestinationManagerSpecification extends Specification with Mockito {
     "dispatch data message" in new DestinationManagerSpecScope {
       val subscription = Subscription("foo/bar", subscriber, true, Option("123"))
 
-      destinationManager ! DestinationManager.Message("foo/bar", 3, Array[Byte](01, 02, 03))
+      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(3, Array[Byte](01, 02, 03)))
       destinationManager ! DestinationManager.Subscribe(subscription)
 
       destinationManager.queueMap("foo/bar").subscriptionList.size must eventually(10, 1 second) (be_==(1))
 
-      destinationManager ! DestinationManager.Message("foo/bar", 4, Array[Byte](01, 02, 03, 04))
+      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(4, Array[Byte](01, 02, 03, 04)))
 
       //there was one(subscription).message(mockEq(3), any[Array[Byte]])
       there was one(transportCtx).write(any[Message])
