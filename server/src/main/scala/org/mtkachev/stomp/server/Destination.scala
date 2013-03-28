@@ -13,7 +13,7 @@ import collection.immutable.Queue
 class Destination(val name: String) extends Actor {
   private var subscriptions: List[Subscription] = List.empty
   private var readySubscriptions: Queue[Subscription] = Queue.empty
-  private var messages: Queue[Dispatch] = Queue.empty
+  private var messages: Queue[Envelope] = Queue.empty
 
   def subscriptionList = subscriptions
   def readySubscriptionQueue = readySubscriptions
@@ -30,7 +30,7 @@ class Destination(val name: String) extends Actor {
         case msg: RemoveSubscriber => {
           removeSubscription(msg.subscription)
         }
-        case msg: Dispatch => {
+        case Dispatch(msg) => {
           if (!readySubscriptionQueue.isEmpty) {
             val (s, q) = readySubscriptions.dequeue
             val nextMsg = if (messageQueue.isEmpty) msg
@@ -39,26 +39,35 @@ class Destination(val name: String) extends Actor {
               dequeueMsg
             }
 
-            s.message(this, nextMsg.envelope)
+            s.message(this, nextMsg)
             readySubscriptions = q
           } else {
             messages = messages.enqueue(msg)
           }
         }
         case msg: Ack => {
-          readySubscriptions = readySubscriptionQueue.enqueue(msg.subscription)
+          subscriptionReady(msg.subscription)
         }
         case msg: Fail => {
-          readySubscriptions = readySubscriptionQueue.enqueue(msg.subscription)
-          messages = messages.enqueue(msg.messages)
+          messages = messages.enqueue(msg.messages.map(_.envelope))
+          subscriptionReady(msg.subscription)
         }
         case msg: Ready => {
-          readySubscriptions = readySubscriptionQueue.enqueue(msg.subscription)
+          subscriptionReady(msg.subscription)
         }
         case msg: Stop => {
           exit()
         }
       }
+    }
+  }
+
+  private def subscriptionReady(subscription: Subscription) {
+    readySubscriptions = readySubscriptionQueue.enqueue(subscription)
+    if (!readySubscriptionQueue.isEmpty && !messageQueue.isEmpty) {
+      val (s, q) = readySubscriptions.dequeue
+      val msg = dequeueMsg
+      s.message(this, msg)
     }
   }
 
