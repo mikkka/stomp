@@ -125,7 +125,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   }
 
   def receive(subscription: Subscription, envelope: Envelope): Message = {
-    receive(message(subscription, envelope.contentLength, envelope.body))
+    receive(message(subscription, envelope))
   }
 
   def receive(msg: Message): Message = {
@@ -153,8 +153,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
     receive.destination ! Destination.Fail(receive.subscription, List(Destination.Dispatch(receive.envelope)))
   }
 
-  def message(subscription: Subscription, contentLength: Int, body: Array[Byte]) =
-    new Message(subscription.destination, UUID.randomUUID.toString, contentLength, body)
+  def message(subscription: Subscription, envelope: Envelope) =
+    new Message(subscription.destination, envelope.id, envelope.contentLength, envelope.body)
 
   def addToPendingAcks(msg: Receive) {
     pendingAcks.put(msg.envelope.id, msg)
