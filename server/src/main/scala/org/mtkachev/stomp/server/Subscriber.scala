@@ -102,8 +102,10 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
 
         case msg: Receive => {
           receive(msg.subscription, msg.envelope)
-          if(msg.subscription.acknowledge) {
+          if(!msg.subscription.acknowledge) {
             ack(msg)
+          } else {
+            addToPendingAcks(msg)
           }
           ()
         }
@@ -154,7 +156,12 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   def message(subscription: Subscription, contentLength: Int, body: Array[Byte]) =
     new Message(subscription.destination, UUID.randomUUID.toString, contentLength, body)
 
+  def addToPendingAcks(msg: Receive) {
+    pendingAcks.put(msg.envelope.id, msg)
+  }
+
   def doAck(messageId: String) {
+    //ACKING EVERYTIME!!!
     pendingAcks.remove(messageId).foreach(ack)
   }
 
