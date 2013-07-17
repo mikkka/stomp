@@ -11,9 +11,9 @@ import collection.immutable.Queue
  */
 
 class Destination(val name: String) extends Actor {
-  private var subscriptions: List[Subscription] = List.empty
-  private var readySubscriptions: Queue[Subscription] = Queue.empty
-  private var messages: Queue[Envelope] = Queue.empty
+  private var subscriptions = List.empty[Subscription]
+  private var readySubscriptions = Queue.empty[Subscription]
+  private var messages = Queue.empty[Envelope]
 
   def subscriptionList = subscriptions
   def readySubscriptionQueue = readySubscriptions
@@ -31,7 +31,7 @@ class Destination(val name: String) extends Actor {
           removeSubscription(msg.subscription)
         }
         case Dispatch(msg) => {
-          if (!readySubscriptionQueue.isEmpty) {
+          if (!readySubscriptions.isEmpty) {
             val (s, q) = readySubscriptions.dequeue
             val nextMsg = if (messageQueue.isEmpty) msg
             else {
@@ -63,9 +63,10 @@ class Destination(val name: String) extends Actor {
   }
 
   private def subscriptionReady(subscription: Subscription) {
-    readySubscriptions = readySubscriptionQueue.enqueue(subscription)
+    readySubscriptions = readySubscriptions.enqueue(subscription)
     if (!readySubscriptionQueue.isEmpty && !messageQueue.isEmpty) {
       val (s, q) = readySubscriptions.dequeue
+      readySubscriptions = q
       val msg = dequeueMsg
       s.message(this, msg)
     }
