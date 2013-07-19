@@ -41,6 +41,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
           msg.frame match {
             case frame: Disconnect => {
               if(!transport.isClosing) transport.close()
+              abortAllTx()
               exit()
             }
 
@@ -168,6 +169,11 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   def commitTx(txKey: String) {
     doWithTx(Some(txKey), tx => tx.commt())
     transactions.remove(txKey)
+  }
+
+  def abortAllTx() {
+    transactions.foreach(_._2.abort())
+    transactions.clear()
   }
 
   def abortTx(txKey: String) {
