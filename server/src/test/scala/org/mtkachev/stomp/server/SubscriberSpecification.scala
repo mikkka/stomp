@@ -19,16 +19,15 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
  */
 
 class SubscriberSpecification extends Specification {
-/*
   "subscriber" should {
     "subscrbe and unsubscribe" in new SubscriberSpecScope {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
       subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, None))
 
-      subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(2))
+      subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
-      subscriber.subscriptionMap.keys must contain(Subscription("/foo/bar", subscriber, true, Some("foo")))
-      subscriber.subscriptionMap.keys must contain(Subscription("/baz/ger", subscriber, false, None))
+      subscriber.subscriptionsList must contain(Subscription("/foo/bar", subscriber, true, Some("foo")))
+      subscriber.subscriptionsList must contain(Subscription("/baz/ger", subscriber, false, None))
 
       dm.messages.size must_== 2
       dm.messages must contain(DestinationManager.Subscribe(Subscription("/foo/bar", subscriber, true, Some("foo"))))
@@ -37,7 +36,7 @@ class SubscriberSpecification extends Specification {
       subscriber ! FrameMsg(UnSubscribe(Some("foo"), None, None))
       subscriber ! FrameMsg(UnSubscribe(None, Some("/baz/ger"), None))
 
-      subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(0))
+      subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(0))
 
       dm.messages.size must_== 4
       dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/foo/bar", subscriber, true, Some("foo"))))
@@ -52,7 +51,11 @@ class SubscriberSpecification extends Specification {
       subscriber ! FrameMsg(Send("foo/bar", 10, None, Some("foobar"), content))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
-      dm.messages must contain(DestinationManager.Message("foo/bar", 10, content))
+      //dm.messages must contain(DestinationManager.Dispatch("foo/bar", Envelope(10, content)))
+      dm.messages exists (_ match {
+        case DestinationManager.Dispatch("foo/bar", x) => x.contentLength == 10 && x.body == content
+        case _ => false
+      })
 
       subscriber.getState must(be(Actor.State.Suspended))
       there was one(transportCtx).write(new Receipt("foobar"))
@@ -62,11 +65,11 @@ class SubscriberSpecification extends Specification {
     "receive" in new SubscriberSpecScope {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", false, None))
       subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, None))
-      subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(2))
+      subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
       val content = "0123456789".getBytes
 
-      subscriber.subscriptionMap.keys.foreach(s => subscriber ! Subscriber.Receive(s, 10, content))
+      subscriber.subscriptionsList.foreach(s => subscriber ! Subscriber.Receive(dm.queueMap(s.destination), s, Envelope(10, content)))
 
       there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content))))
       there was one(transportCtx).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content))))
@@ -75,10 +78,11 @@ class SubscriberSpecification extends Specification {
 
       success
     }
+    /*
     "ack" in new SubscriberSpecScope {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
       subscriber ! FrameMsg(Subscribe(Some("baz"), "/baz/bar", true, None))
-      subscriber.subscriptionMap.size must eventually(10, 100 millis)(be_==(2))
+      subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
       val content11 = "1234567890_1".getBytes
       val content21 = "2345678901_1".getBytes
@@ -88,7 +92,7 @@ class SubscriberSpecification extends Specification {
       val content22 = "2345678901_2".getBytes
       val content32 = "3456789012_2".getBytes
 
-      val sIter = subscriber.subscriptionMap.keysIterator
+      val sIter = subscriber.subscriptionsList.iterator
       val subscription1 = sIter.next()
       val subscription2 = sIter.next()
 
@@ -232,8 +236,9 @@ class SubscriberSpecification extends Specification {
 
       success
     }
+    */
   }
-*/
+
   trait SubscriberSpecScope extends Around with Scope with Mockito {
     val dm: MockDestinationManager = new MockDestinationManager
     val transportCtx: TransportCtx = mock[TransportCtx]

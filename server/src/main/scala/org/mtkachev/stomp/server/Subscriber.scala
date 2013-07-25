@@ -22,6 +22,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   private val transactions = Map.empty[String, Transaction]
   private var subscriptions = List.empty[Subscription]
 
+  def subscriptionsList = subscriptions
+
   val sessionId = UUID.randomUUID.toString
 
   start()
