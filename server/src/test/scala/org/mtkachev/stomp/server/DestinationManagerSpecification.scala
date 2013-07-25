@@ -58,7 +58,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     }
 
     "dispatch data message" in new DestinationManagerSpecScope {
-      val subscription = Subscription("foo/bar", subscriber, true, Option("123"))
+      val subscription = Subscription("foo/bar", subscriber, false, Option("123"))
 
       destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(3, Array[Byte](01, 02, 03)))
       destinationManager ! DestinationManager.Subscribe(subscription)
@@ -68,7 +68,9 @@ class DestinationManagerSpecification extends Specification with Mockito {
       destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(4, Array[Byte](01, 02, 03, 04)))
 
       //there was one(subscription).message(mockEq(3), any[Array[Byte]])
-      there was one(transportCtx).write(any[Message])
+      there was two(transportCtx).write(any[Message])
+      there was one(transportCtx).write(argThat(matchMessage(
+        new Message("123", "", 3, Array[Byte](01, 02, 03)))))
       there was one(transportCtx).write(argThat(matchMessage(
         new Message("123", "", 4, Array[Byte](01, 02, 03, 04)))))
 
