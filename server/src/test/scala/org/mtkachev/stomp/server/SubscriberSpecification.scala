@@ -51,7 +51,6 @@ class SubscriberSpecification extends Specification {
       subscriber ! FrameMsg(Send("foo/bar", 10, None, Some("foobar"), content))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
-      //dm.messages must contain(DestinationManager.Dispatch("foo/bar", Envelope(10, content)))
       dm.messages exists (_ match {
         case DestinationManager.Dispatch("foo/bar", x) => x.contentLength == 10 && x.body == content
         case _ => false
@@ -64,93 +63,65 @@ class SubscriberSpecification extends Specification {
     }
     "receive" in new SubscriberSpecScope {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", false, None))
-      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, None))
+      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", true, None))
       subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
       val content = "0123456789".getBytes
 
-      subscriber.subscriptionsList.foreach(s => subscriber ! Subscriber.Receive(dm.queueMap(s.destination), s, Envelope(10, content)))
+      subscriber.subscriptionsList.foreach(s => subscriber ! Subscriber.Receive(destination, s, new Envelope("id42", 10, content)))
 
       there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content))))
       there was one(transportCtx).write(argThat(matchMessage(new Message("/baz/ger", "", 10, content))))
+
+      destination.messages.size must eventually(10, 100 millis)(be_==(1))
+      destination.messages(0) must_== Destination.Ack(subscriber.subscriptionsList(1), List("id42"))
 
       subscriber.getState must(be(Actor.State.Suspended))
 
       success
     }
-    /*
     "ack" in new SubscriberSpecScope {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
       subscriber ! FrameMsg(Subscribe(Some("baz"), "/baz/bar", true, None))
       subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
       val content11 = "1234567890_1".getBytes
-      val content21 = "2345678901_1".getBytes
-      val content31 = "3456789012_1".getBytes
-
       val content12 = "1234567890_2".getBytes
-      val content22 = "2345678901_2".getBytes
-      val content32 = "3456789012_2".getBytes
 
       val sIter = subscriber.subscriptionsList.iterator
       val subscription1 = sIter.next()
       val subscription2 = sIter.next()
 
-      subscriber ! Subscriber.Receive(subscription1, 10, content11)
-      subscriber ! Subscriber.Receive(subscription2, 10, content12)
+      val envelope1 = Envelope(10, content11)
+      val envelope2 = Envelope(10, content12)
+      val srecv1 = Subscriber.Receive(destination, subscription1, envelope1)
+      val srecv2 = Subscriber.Receive(destination, subscription2, envelope2)
+      subscriber ! srecv1
+      subscriber ! srecv2
 
-      subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(2))
-      subscriber.ackIndexMap.values must contain(Subscription("/foo/bar", subscriber, true, Some("foo")))
-      subscriber.ackIndexMap.values must contain(Subscription("/baz/bar", subscriber, true, Some("baz")))
-      subscriber.ackMap(subscription1).size must_== 1
-      subscriber.ackMap(subscription2).size must_== 1
+      subscriber.pendingAcksMap.size must eventually(10, 100 millis)(be_==(2))
+      subscriber.pendingAcksMap.values must contain(srecv1)
+      subscriber.pendingAcksMap.values must contain(srecv2)
 
-      subscriber ! Subscriber.Receive(subscription1, 10, content21)
-      subscriber ! Subscriber.Receive(subscription2, 10, content22)
+      subscriber.pendingAcksMap(envelope1.id) must_== srecv1
+      subscriber.pendingAcksMap(envelope2.id) must_== srecv2
 
-      subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(2))
-      subscriber.ackMap(subscription1).size must_== 1
-      subscriber.ackMap(subscription2).size must_== 1
-      subscriber.subscriptionMap(subscription1).size must eventually(10, 100 millis)(be_==(1))
-      subscriber.subscriptionMap(subscription2).size must eventually(10, 100 millis)(be_==(1))
-
-      subscriber ! Subscriber.Receive(subscription1, 10, content31)
-      subscriber ! Subscriber.Receive(subscription2, 10, content32)
-
-      subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(2))
-      subscriber.ackMap(subscription1).size must_== 1
-      subscriber.ackMap(subscription2).size must_== 1
-      subscriber.subscriptionMap(subscription1).size must eventually(10, 100 millis)(be_==(2))
-      subscriber.subscriptionMap(subscription2).size must eventually(10, 100 millis)(be_==(2))
-
-      for(i <- 1 to 6) {
-        val msgId = subscriber.ackIndexMap.keysIterator.next()
-        subscriber ! FrameMsg(Ack(msgId, None, None))
-        if(i < 6) {
-          subscriber.ackIndexMap.keysIterator.next must eventually(10, 100 millis)(be_!=(msgId))
-        } else {
-          subscriber.ackIndexMap must eventually(10, 100 millis)(beEmpty)
-        }
+      subscriber.pendingAcksMap.foreach {kv =>
+        subscriber ! FrameMsg(Ack(kv._1, None, None))
       }
 
-      subscriber.subscriptionMap(subscription1).size must eventually(10, 100 millis)(be_==(0))
-      subscriber.subscriptionMap(subscription2).size must eventually(10, 100 millis)(be_==(0))
-      subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(0))
-      subscriber.ackMap(subscription1).size must_== 0
-      subscriber.ackMap(subscription2).size must_== 0
+      destination.messages.size must eventually(10, 100 millis)(be_==(2))
+      destination.messages must contain(Destination.Ack(subscriber.subscriptionsList(0), List(envelope1.id)))
+      destination.messages must contain(Destination.Ack(subscriber.subscriptionsList(1), List(envelope2.id)))
 
       there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content11))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content21))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content31))))
-
       there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content12))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content22))))
-      there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content32))))
 
       subscriber.getState must(be(Actor.State.Suspended))
 
       success
     }
+    /*
     "tx commit" in new SubscriberSpecScope {
       val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
       val content1 = "1234567890_1".getBytes
@@ -240,7 +211,8 @@ class SubscriberSpecification extends Specification {
   }
 
   trait SubscriberSpecScope extends Around with Scope with Mockito {
-    val dm: MockDestinationManager = new MockDestinationManager
+    val dm = new MockDestinationManager
+    val destination = new MockDestination("foo")
     val transportCtx: TransportCtx = mock[TransportCtx]
     val subscriber: Subscriber = new Subscriber(dm, transportCtx, "foo", "bar")
 
@@ -256,6 +228,7 @@ class SubscriberSpecification extends Specification {
 
     def cleanUp = {
       dm ! "poison"
+      destination ! "poison"
       subscriber ! Subscriber.Stop()
       subscriber.getState must eventually(10, 100 millis)(be(Actor.State.Terminated))
       scala.actors.Scheduler.impl.shutdown()
@@ -269,6 +242,21 @@ class SubscriberSpecification extends Specification {
   }
 
   class MockDestinationManager extends DestinationManager {
+    val messages = new scala.collection.mutable.ListBuffer[AnyRef]
+
+    start()
+
+    override def act() {
+      loop {
+        react {
+          case "poison" =>  exit()
+          case msg: AnyRef => messages += msg
+        }
+      }
+    }
+  }
+
+  class MockDestination(override val name: String) extends Destination(name) {
     val messages = new scala.collection.mutable.ListBuffer[AnyRef]
 
     start()

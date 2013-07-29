@@ -23,6 +23,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   private var subscriptions = List.empty[Subscription]
 
   def subscriptionsList = subscriptions
+  def pendingAcksMap = pendingAcks
+
 
   val sessionId = UUID.randomUUID.toString
 
