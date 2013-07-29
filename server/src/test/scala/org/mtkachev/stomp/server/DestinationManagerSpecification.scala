@@ -76,6 +76,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
 
       success
    }
+   //TODO: write test for ack (i.e. subscriber can get next message only after ack!)
   }
 
   trait DestinationManagerSpecScope extends Around with Scope {
