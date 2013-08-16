@@ -121,7 +121,6 @@ class SubscriberSpecification extends Specification {
 
       success
     }
-    /*
     "tx commit" in new SubscriberSpecScope {
       val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
       val content1 = "1234567890_1".getBytes
@@ -131,23 +130,28 @@ class SubscriberSpecification extends Specification {
       subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, None))
       subscriber ! FrameMsg(Begin("tx1", None))
 
-      subscriber.subscriptionMap.size must eventually(3, 1 second)(be_==(1))
-      subscriber.transactionMap.size must eventually(3, 1 second)(be_==(1))
+      subscriber.subscriptionsList.size must eventually(3, 1 second)(be_==(1))
+      subscriber.transactionsMap.size must eventually(3, 1 second)(be_==(1))
 
-      subscriber ! Subscriber.Receive(subscription, 10, content1)
-      subscriber ! Subscriber.Receive(subscription, 10, content2)
+
+      val envelope1 = Envelope(10, content1)
+      val envelope2 = Envelope(10, content1)
+      val srecv1 = Subscriber.Receive(destination, subscription, envelope1)
+      val srecv2 = Subscriber.Receive(destination, subscription, envelope2)
+      subscriber ! srecv1
+      subscriber ! srecv2
 
       waitForWorkout
 
-      val firstMsgId = subscriber.ackIndexMap.keysIterator.next()
+      val firstMsgId = subscriber.pendingAcksMap.keysIterator.next()
       subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), None))
 
       waitForWorkout
 
-      val secondMsgId = subscriber.ackIndexMap.keysIterator.next()
+      val secondMsgId = subscriber.pendingAcksMap.keysIterator.next()
       subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), None))
 
-      subscriber.ackIndexMap.size must eventually(10, 100 millis)(be_==(0))
+      subscriber.pendingAcksMap.size must eventually(10, 100 millis)(be_==(0))
 
       subscriber ! FrameMsg(Send("foo/baz", 10, Some("tx1"), None, content3))
 
@@ -155,17 +159,17 @@ class SubscriberSpecification extends Specification {
 
       subscriber ! FrameMsg(Commit("tx1", None))
 
-      subscriber.transactionMap.size must eventually(3, 1 second)(be_==(0))
+      subscriber.transactionsMap.size must eventually(3, 1 second)(be_==(0))
 
-      println(dm.messages)
       dm.messages.size must eventually(10, 100 millis)(be_==(2))
       dm.messages(0) must_== DestinationManager.Subscribe(subscription)
-      dm.messages(1) must_== DestinationManager.Message("foo/baz", 10, content3)
+      dm.messages(1) must beLike {case DestinationManager.Dispatch("foo/baz", Envelope(_, 10, content3)) => ok}
 
-      subscriber.ackIndexMap.size must_== 0
+      subscriber.pendingAcksMap.size must_== 0
 
       success
     }
+/*
     "tx rollback" in new SubscriberSpecScope {
       val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
       val content1 = "1234567890_1".getBytes
