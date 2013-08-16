@@ -151,12 +151,12 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
     receive.destination ! Destination.Ack(receive.subscription, List(receive.envelope.id))
   }
 
-  def ready(receive: Receive) {
-    receive.destination ! Destination.Ready(receive.subscription)
-  }
-
   def fail(receive: Receive) {
     receive.destination ! Destination.Fail(receive.subscription, List(Destination.Dispatch(receive.envelope)))
+  }
+
+  def ready(receive: Receive) {
+    receive.destination ! Destination.Ready(receive.subscription)
   }
 
   def message(subscription: Subscription, envelope: Envelope) =
