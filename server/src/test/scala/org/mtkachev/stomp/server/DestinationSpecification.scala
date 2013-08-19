@@ -19,7 +19,7 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
  */
 class DestinationSpecification extends Specification {
   "destination" should {
-    "handle subscrbe and unsubscribe" in new DestinationSpecScope {
+    "handle add subscrber and remove subscriber" in new DestinationSpecScope {
     }
     "dispatch message when there are ready subscription" in new DestinationSpecScope {
     }
@@ -27,15 +27,19 @@ class DestinationSpecification extends Specification {
     }
     "dispatch message from queue" in new DestinationSpecScope {
     }
-    "ack and dispatch message from queue" in new DestinationSpecScope {
+    "handle ack and dispatch message from queue" in new DestinationSpecScope {
     }
-    "ready and dispatch message from queue" in new DestinationSpecScope {
+    "handle ready and dispatch message from queue" in new DestinationSpecScope {
     }
-    "fail and dispatch message from queue" in new DestinationSpecScope {
+    "handle fail and dispatch message from queue" in new DestinationSpecScope {
     }
   }
 
   trait DestinationSpecScope extends Around with Scope with Mockito {
+    val dm = new MockDestinationManager
+    val transportCtx: TransportCtx = mock[TransportCtx]
+    val subscriber: Subscriber = new MockSubscriber(dm, transportCtx)
+
     val destination: Destination = new Destination("foo")
 
     def around[T : AsResult](t: =>T) = {
@@ -54,6 +58,36 @@ class DestinationSpecification extends Specification {
 
     def waitForWorkout {
       destination.getState must eventually(10, 100 millis)(be(Actor.State.Suspended))
+    }
+  }
+
+  class MockDestinationManager extends DestinationManager {
+    val messages = new scala.collection.mutable.ListBuffer[AnyRef]
+
+    start()
+
+    override def act() {
+      loop {
+        react {
+          case "poison" =>  exit()
+          case msg: AnyRef => messages += msg
+        }
+      }
+    }
+  }
+
+  class MockSubscriber(qm: DestinationManager, transport: TransportCtx) extends Subscriber(qm, transport, "foo", "bar") {
+    val messages = new scala.collection.mutable.ListBuffer[AnyRef]
+
+    start()
+
+    override def act() {
+      loop {
+        react {
+          case "poison" =>  exit()
+          case msg: AnyRef => messages += msg
+        }
+      }
     }
   }
 }
