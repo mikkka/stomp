@@ -20,6 +20,17 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
 class DestinationSpecification extends Specification {
   "destination" should {
     "handle add subscrber and remove subscriber" in new DestinationSpecScope {
+      destination.subscriptionList.size must_==(0)
+      val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+
+      destination ! Destination.AddSubscriber(subscription)
+      destination.subscriptionList.size must eventually(3, 1 second)(be_==(1))
+      destination.subscriptionList(0) must_== subscription
+      subscriber.messages.size must eventually(3, 1 second)(be_==(1))
+      subscriber.messages(0) must_== Subscriber.Subscribed(destination, subscription)
+
+      destination ! Destination.RemoveSubscriber(subscription)
+      destination.subscriptionList.size must eventually(3, 1 second)(be_==(0))
     }
     "dispatch message when there are ready subscription" in new DestinationSpecScope {
     }
@@ -38,7 +49,7 @@ class DestinationSpecification extends Specification {
   trait DestinationSpecScope extends Around with Scope with Mockito {
     val dm = new MockDestinationManager
     val transportCtx: TransportCtx = mock[TransportCtx]
-    val subscriber: Subscriber = new MockSubscriber(dm, transportCtx)
+    val subscriber: MockSubscriber = new MockSubscriber(dm, transportCtx)
 
     val destination: Destination = new Destination("foo")
 
