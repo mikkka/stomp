@@ -33,6 +33,18 @@ class DestinationSpecification extends Specification {
       destination.subscriptionList.size must eventually(3, 1 second)(be_==(0))
     }
     "dispatch message when there are ready subscription" in new DestinationSpecScope {
+      val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+      destination ! Destination.AddSubscriber(subscription)
+      destination ! Destination.Ready(subscription)
+
+      destination.subscriptionList.size must eventually(3, 1 second)(be_==(1))
+      destination.readySubscriptionQueue.size must eventually(3, 1 second)(be_==(1))
+
+      val env = Envelope(10, "0123456789".getBytes)
+      destination ! Destination.Dispatch(env)
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(2))
+      subscriber.messages(1) must_== Subscriber.Receive(destination, subscription, env)
     }
     "dispatch message with there are no ready subscription (store it)" in new DestinationSpecScope {
     }
