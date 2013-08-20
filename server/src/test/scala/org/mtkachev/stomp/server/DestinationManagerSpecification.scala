@@ -38,7 +38,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
 
       destinationManager.subscriptionList.size must eventually(10, 1 second) (be_==(1))
       destinationManager.queueMap.size must eventually(10, 1 second) (be_==(1))
-      destinationManager.queueMap("foo/bar").subscriptionList.size must eventually(10, 1 second) (be_==(1))
+      destinationManager.queueMap("foo/bar").subscriptionSet.size must eventually(10, 1 second) (be_==(1))
 
       success
     }
@@ -52,7 +52,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
 
       destinationManager.subscriptionList.size must eventually(10, 1 second) (be_==(0))
       destinationManager.queueMap.size must eventually(10, 1 second) (be_==(1))
-      destinationManager.queueMap("foo/bar").subscriptionList.size must eventually(10, 1 second) (be_==(0))
+      destinationManager.queueMap("foo/bar").subscriptionSet.size must eventually(10, 1 second) (be_==(0))
 
       success
     }
@@ -63,7 +63,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
       destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(3, Array[Byte](01, 02, 03)))
       destinationManager ! DestinationManager.Subscribe(subscription)
 
-      destinationManager.queueMap("foo/bar").subscriptionList.size must eventually(10, 1 second) (be_==(1))
+      destinationManager.queueMap("foo/bar").subscriptionSet.size must eventually(10, 1 second) (be_==(1))
 
       destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(4, Array[Byte](01, 02, 03, 04)))
 

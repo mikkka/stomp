@@ -20,22 +20,22 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
 class DestinationSpecification extends Specification {
   "destination" should {
     "handle add subscrber and remove subscriber" in new DestinationSpecScope {
-      destination.subscriptionList.size must_== 0
+      destination.subscriptionSet.size must_== 0
 
       destination ! Destination.AddSubscriber(subscription)
-      destination.subscriptionList.size must eventually(3, 1 second)(be_==(1))
-      destination.subscriptionList(0) must_== subscription
+      destination.subscriptionSet.size must eventually(3, 1 second)(be_==(1))
+      destination.subscriptionSet.head must_== subscription
       subscriber.messages.size must eventually(3, 1 second)(be_==(1))
       subscriber.messages(0) must_== Subscriber.Subscribed(destination, subscription)
 
       destination ! Destination.RemoveSubscriber(subscription)
-      destination.subscriptionList.size must eventually(3, 1 second)(be_==(0))
+      destination.subscriptionSet.size must eventually(3, 1 second)(be_==(0))
     }
     "dispatch message when there are ready subscription" in new DestinationSpecScope {
       destination ! Destination.AddSubscriber(subscription)
       destination ! Destination.Ready(subscription)
 
-      destination.subscriptionList.size must eventually(3, 1 second)(be_==(1))
+      destination.subscriptionSet.size must eventually(3, 1 second)(be_==(1))
       destination.readySubscriptionQueue.size must eventually(3, 1 second)(be_==(1))
 
       val env = Envelope(10, "0123456789".getBytes)

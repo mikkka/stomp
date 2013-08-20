@@ -2,7 +2,7 @@ package org.mtkachev.stomp.server
 
 import actors.Actor
 import org.mtkachev.stomp.server.Destination._
-import collection.immutable.Queue
+import scala.collection.immutable.{HashSet, Queue}
 
 /**
  * User: mick
@@ -11,11 +11,11 @@ import collection.immutable.Queue
  */
 
 class Destination(val name: String) extends Actor {
-  private var subscriptions = List.empty[Subscription]
+  private var subscriptions = HashSet.empty[Subscription]
   private var readySubscriptions = Queue.empty[Subscription]
   private var messages = Queue.empty[Envelope]
 
-  def subscriptionList = subscriptions
+  def subscriptionSet = subscriptions
   def readySubscriptionQueue = readySubscriptions
   def messageQueue = messages
 
@@ -63,7 +63,9 @@ class Destination(val name: String) extends Actor {
   }
 
   private def subscriptionReady(subscription: Subscription) {
-    readySubscriptions = readySubscriptions.enqueue(subscription)
+    if(subscriptions.contains(subscription)) {
+      readySubscriptions = readySubscriptions.enqueue(subscription)
+    }
     if (!readySubscriptionQueue.isEmpty && !messageQueue.isEmpty) {
       val (s, q) = readySubscriptions.dequeue
       readySubscriptions = q
@@ -79,12 +81,13 @@ class Destination(val name: String) extends Actor {
   }
 
   private def addSubscription(subscription: Subscription) {
-    subscriptions = subscription :: subscriptions
+    subscriptions = subscriptions + subscription
     subscription.subscribed(this)
   }
 
   private def removeSubscription(subscription: Subscription) {
     subscriptions = subscriptions.filterNot(_ == subscription)
+    readySubscriptions = readySubscriptions.filterNot(_ == subscription)
   }
 
   def isEmpty = subscriptions.isEmpty
