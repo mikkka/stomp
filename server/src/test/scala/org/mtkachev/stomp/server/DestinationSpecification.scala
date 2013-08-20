@@ -20,7 +20,7 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
 class DestinationSpecification extends Specification {
   "destination" should {
     "handle add subscrber and remove subscriber" in new DestinationSpecScope {
-      destination.subscriptionList.size must_==(0)
+      destination.subscriptionList.size must_== 0
 
       destination ! Destination.AddSubscriber(subscription)
       destination.subscriptionList.size must eventually(3, 1 second)(be_==(1))
@@ -47,31 +47,48 @@ class DestinationSpecification extends Specification {
       destination.messageQueue.size must_== 0
     }
     "dispatch message with there are no ready subscription (store it)" in new DestinationSpecScope {
-      val env1 = Envelope(10, "1123456789".getBytes)
-      val env2 = Envelope(10, "2123456789".getBytes)
-
-      destination ! Destination.Dispatch(env1)
-      destination ! Destination.AddSubscriber(subscription)
-      destination ! Destination.Dispatch(env1)
-
-      waitForWorkout
-
-      //no rescv got because was not ready
-      subscriber.messages.size must eventually(3, 1 second)(be_==(1))
-      subscriber.messages(0) must_== Subscriber.Subscribed(destination, subscription)
+      val (env1, env2) = subscribeAndTwoDispatch
 
       //all envs stored in queue!
       destination.messageQueue.size must_== 2
       destination.messageQueue(0) must_== env1
-      destination.messageQueue(1) must_== env1
-    }
-    "dispatch message from queue" in new DestinationSpecScope {
-    }
-    "handle ack and dispatch message from queue" in new DestinationSpecScope {
+      destination.messageQueue(1) must_== env2
     }
     "handle ready and dispatch message from queue" in new DestinationSpecScope {
+      val (env1, env2) = subscribeAndTwoDispatch
+      destination ! Destination.Ready(subscription)
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(2))
+      subscriber.messages(1) must_== Subscriber.Receive(destination, subscription, env1)
+      destination.messageQueue.size must_== 1
+    }
+    "handle ack and dispatch message from queue" in new DestinationSpecScope {
+      val (env1, env2) = subscribeAndTwoDispatch
+      destination ! Destination.Ready(subscription)
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(2))
+      subscriber.messages(1) must_== Subscriber.Receive(destination, subscription, env1)
+
+      destination ! Destination.Ack(subscription, List(env1.id))
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(3))
+      subscriber.messages(2) must_== Subscriber.Receive(destination, subscription, env2)
+      destination.messageQueue.size must_== 0
     }
     "handle fail and dispatch message from queue" in new DestinationSpecScope {
+      val (env1, env2) = subscribeAndTwoDispatch
+      destination ! Destination.Ready(subscription)
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(2))
+      subscriber.messages(1) must_== Subscriber.Receive(destination, subscription, env1)
+
+      destination ! Destination.Fail(subscription, List(Destination.Dispatch(env1)))
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(3))
+      subscriber.messages(2) must_== Subscriber.Receive(destination, subscription, env2)
+
+      destination.messageQueue.size must_== 1
+      destination.messageQueue(0) must_== env1
     }
   }
 
@@ -99,6 +116,23 @@ class DestinationSpecification extends Specification {
 
     def waitForWorkout {
       destination.getState must eventually(10, 100 millis)(be(Actor.State.Suspended))
+    }
+
+    def subscribeAndTwoDispatch = {
+      val env1 = Envelope(10, "1123456789".getBytes)
+      val env2 = Envelope(10, "2123456789".getBytes)
+
+      destination ! Destination.Dispatch(env1)
+      destination ! Destination.AddSubscriber(subscription)
+      destination ! Destination.Dispatch(env2)
+
+      waitForWorkout
+
+      //no rescv got because was not ready
+      subscriber.messages.size must eventually(3, 1 second)(be_==(1))
+      subscriber.messages(0) must_== Subscriber.Subscribed(destination, subscription)
+
+      (env1, env2)
     }
   }
 
