@@ -28,8 +28,12 @@ class DestinationSpecification extends Specification {
       subscriber.messages.size must eventually(3, 1 second)(be_==(1))
       subscriber.messages(0) must_== Subscriber.Subscribed(destination, subscription)
 
+      destination ! Destination.Ready(subscription)
+      destination.readySubscriptionQueue.size must eventually(3, 1 second)(be_==(1))
+
       destination ! Destination.RemoveSubscriber(subscription)
       destination.subscriptionSet.size must eventually(3, 1 second)(be_==(0))
+      destination.readySubscriptionQueue.size must_== 0
     }
     "dispatch message when there are ready subscription" in new DestinationSpecScope {
       destination ! Destination.AddSubscriber(subscription)
@@ -89,6 +93,20 @@ class DestinationSpecification extends Specification {
 
       destination.messageQueue.size must_== 1
       destination.messageQueue(0) must_== env1
+    }
+    "handle ack after subscriber removal" in new DestinationSpecScope {
+      destination.subscriptionSet.size must_== 0
+
+      destination ! Destination.AddSubscriber(subscription)
+      destination.subscriptionSet.size must eventually(3, 1 second)(be_==(1))
+      destination.subscriptionSet.head must_== subscription
+      subscriber.messages.size must eventually(3, 1 second)(be_==(1))
+      subscriber.messages(0) must_== Subscriber.Subscribed(destination, subscription)
+
+      destination ! Destination.RemoveSubscriber(subscription)
+      destination ! Destination.Ack(subscription, List("foobar"))
+      destination.subscriptionSet.size must eventually(3, 1 second)(be_==(0))
+      destination.readySubscriptionQueue.size must_== 0
     }
   }
 
