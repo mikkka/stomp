@@ -103,5 +103,7 @@ object Destination {
   case class Fail(subscription: Subscription, messages: List[Dispatch])
   case class Ready(subscription: Subscription)
 
+  case class Loaded(envelopes: Vector[Envelope])
+
   case class Stop()
 }
