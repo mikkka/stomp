@@ -12,6 +12,7 @@ import org.mtkachev.stomp.server.Envelope
  */
 class ImMemoryPersister extends Persister {
   private var store = Vector.empty[Event]
+  def storeView = store.view
 
   start()
 
@@ -29,6 +30,9 @@ class ImMemoryPersister extends Persister {
         }
         case Remove(id) => {
           store = store :+ Out(id)
+        }
+        case Stop => {
+          exit()
         }
       }
     }

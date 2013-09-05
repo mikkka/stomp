@@ -16,4 +16,5 @@ object Persister {
   case class StoreOne(msg: Envelope)
   case class StoreList(msgList: List[Envelope])
   case class Remove(id: String)
+  case class Stop()
 }
