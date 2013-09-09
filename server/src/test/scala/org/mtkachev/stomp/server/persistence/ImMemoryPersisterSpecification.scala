@@ -24,10 +24,9 @@ class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
         Envelope("in2", 2, "aa".getBytes),
         Envelope("in3", 3, "zzz".getBytes)
       ))
-      persister ! Remove("in2")
-      persister ! Remove("in3")
+      persister ! Remove(List("in2", "in3"))
       persister ! StoreOne(Envelope("in4", 4, "xxxx".getBytes))
-      persister ! Remove("in1")
+      persister ! Remove(List("in1"))
 
       persister.storeView.size must eventually(10, 1 second) (be_==(7))
       val storeView = persister.storeView.toList.map {
@@ -46,11 +45,11 @@ class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
     }
     "store 5 In's and 3 Out's and return 4 Envelopes on load query(4)" in new ImMemoryPersisterSpecScope {
       persister ! StoreOne(Envelope("in1", 4, "qwer".getBytes))
-      persister ! Remove("inn1")
+      persister ! Remove(List("inn1"))
       persister ! StoreOne(Envelope("in2", 4, "asdf".getBytes))
-      persister ! Remove("inn2")
+      persister ! Remove(List("inn2"))
       persister ! StoreOne(Envelope("in3", 4, "xzcv".getBytes))
-      persister ! Remove("inn3")
+      persister ! Remove(List("inn3"))
       persister ! StoreOne(Envelope("in4", 4, "tyui".getBytes))
       persister ! StoreOne(Envelope("in5", 4, "ghjk".getBytes))
 
@@ -75,9 +74,9 @@ class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
     }
     "store 3 In's and 2 Out's and return 3 Envelopes on load query(4)" in new ImMemoryPersisterSpecScope {
       persister ! StoreOne(Envelope("in1", 4, "qwer".getBytes))
-      persister ! Remove("inn1")
+      persister ! Remove(List("inn1"))
       persister ! StoreOne(Envelope("in2", 4, "asdf".getBytes))
-      persister ! Remove("inn2")
+      persister ! Remove(List("inn2"))
       persister ! StoreOne(Envelope("in3", 4, "xzcv".getBytes))
 
       val ans = persister !? Load(4)

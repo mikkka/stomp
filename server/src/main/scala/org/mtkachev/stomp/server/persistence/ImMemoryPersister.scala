@@ -29,7 +29,7 @@ class ImMemoryPersister extends Persister {
           store = store ++ msgs.map(msg => In(msg.id, msg.body))
         }
         case Remove(id) => {
-          store = store :+ Out(id)
+          store = store ++ id.map(Out)
         }
         case Stop => {
           exit()

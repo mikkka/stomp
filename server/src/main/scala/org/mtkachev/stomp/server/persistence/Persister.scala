@@ -2,6 +2,7 @@ package org.mtkachev.stomp.server.persistence
 
 import org.mtkachev.stomp.server.Envelope
 import scala.actors.Actor
+import scala.collection.GenTraversableOnce
 
 /**
  * User: mick
@@ -14,7 +15,7 @@ trait Persister extends Actor
 object Persister {
   case class Load(quantity: Int)
   case class StoreOne(msg: Envelope)
-  case class StoreList(msgList: List[Envelope])
-  case class Remove(id: String)
+  case class StoreList(msgList: Traversable[Envelope])
+  case class Remove(id: Traversable[String])
   case class Stop()
 }
