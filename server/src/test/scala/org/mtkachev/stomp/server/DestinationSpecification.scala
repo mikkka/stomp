@@ -116,7 +116,7 @@ class DestinationSpecification extends Specification {
     val subscriber: MockSubscriber = new MockSubscriber(dm, transportCtx)
     val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
 
-    val destination: Destination = new Destination("foo")
+    val destination: Destination = new Destination("foo", 1024)
 
     def around[T : AsResult](t: =>T) = {
       issues(

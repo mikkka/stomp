@@ -22,11 +22,13 @@ class ImMemoryPersister extends Persister {
         case Load(quantity) => {
           sender ! Loaded(load(quantity).map(x => Envelope(x.id, x.body.size, x.body)))
         }
-        case StoreOne(msg) => {
-          store = store :+ In(msg.id, msg.body)
+        case StoreOne(msg, move) => {
+          if(!move)
+            store = store :+ In(msg.id, msg.body)
         }
-        case StoreList(msgs) => {
-          store = store ++ msgs.map(msg => In(msg.id, msg.body))
+        case StoreList(msgs, move) => {
+          if(!move)
+            store = store ++ msgs.map(msg => In(msg.id, msg.body))
         }
         case Remove(id) => {
           store = store ++ id.map(Out)

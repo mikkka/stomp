@@ -14,8 +14,8 @@ trait Persister extends Actor
 
 object Persister {
   case class Load(quantity: Int)
-  case class StoreOne(msg: Envelope)
-  case class StoreList(msgList: Traversable[Envelope])
+  case class StoreOne(msg: Envelope, move: Boolean)
+  case class StoreList(msgList: Traversable[Envelope], move: Boolean)
   case class Remove(id: Traversable[String])
   case class Stop()
 }

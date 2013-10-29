@@ -289,7 +289,7 @@ class SubscriberSpecification extends Specification {
     }
   }
 
-  class MockDestination(override val name: String) extends Destination(name) {
+  class MockDestination(override val name: String) extends Destination(name, 1024) {
     val messages = new scala.collection.mutable.ListBuffer[AnyRef]
 
     start()

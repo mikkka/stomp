@@ -2,7 +2,9 @@ package org.mtkachev.stomp.server
 
 import actors.Actor
 import org.mtkachev.stomp.server.Destination._
-import scala.collection.immutable.{HashSet, Queue}
+import scala.collection.immutable.{HashSet, Queue, Iterable}
+import org.mtkachev.stomp.server.persistence.ImMemoryPersister
+import org.mtkachev.stomp.server.persistence.Persister.{Remove, Load, StoreOne, StoreList}
 
 /**
  * User: mick
@@ -10,10 +12,13 @@ import scala.collection.immutable.{HashSet, Queue}
  * Time: 20:16:04
  */
 
-class Destination(val name: String) extends Actor {
+class Destination(val name: String, val maxQueueSize: Int) extends Actor {
   private var subscriptions = HashSet.empty[Subscription]
   private var readySubscriptions = Queue.empty[Subscription]
   private var messages = Queue.empty[Envelope]
+  private val persister = new ImMemoryPersister
+  private var workMode: WorkMode = Instant
+  private var lastReceivedMessageId: String = ""
 
   def subscriptionSet = subscriptions
   def readySubscriptionQueue = readySubscriptions
@@ -31,29 +36,25 @@ class Destination(val name: String) extends Actor {
           removeSubscription(msg.subscription)
         }
         case Dispatch(msg) => {
-          if (!readySubscriptions.isEmpty) {
-            val (s, q) = readySubscriptions.dequeue
-            val nextMsg = if (messageQueue.isEmpty) msg
-            else {
-              messages = messages.enqueue(msg)
-              dequeueMsg
-            }
-
-            s.message(this, nextMsg)
-            readySubscriptions = q
-          } else {
-            messages = messages.enqueue(msg)
-          }
+          dispatch(msg)
         }
         case msg: Ack => {
+          persister ! Remove(msg.messagesId)
           subscriptionReady(msg.subscription)
         }
         case msg: Fail => {
-          messages = messages.enqueue(msg.messages.map(_.envelope))
-          subscriptionReady(msg.subscription)
+          fail(msg)
         }
         case msg: Ready => {
           subscriptionReady(msg.subscription)
+        }
+        case msg: Loaded => {
+          if(!msg.envelopes.isEmpty) {
+            enqueueMsg(msg.envelopes)
+            if(msg.envelopes.last.id ==lastReceivedMessageId) {
+              workMode = Instant
+            }
+          }
         }
         case msg: Stop => {
           exit()
@@ -62,11 +63,8 @@ class Destination(val name: String) extends Actor {
     }
   }
 
-  private def subscriptionReady(subscription: Subscription) {
-    if(subscriptions.contains(subscription)) {
-      readySubscriptions = readySubscriptions.enqueue(subscription)
-    }
-    if (!readySubscriptionQueue.isEmpty && !messageQueue.isEmpty) {
+  def tryToSend() {
+    if (!readySubscriptions.isEmpty && !messages.isEmpty) {
       val (s, q) = readySubscriptions.dequeue
       readySubscriptions = q
       val msg = dequeueMsg
@@ -74,10 +72,60 @@ class Destination(val name: String) extends Actor {
     }
   }
 
+  def dispatch(msg: Envelope) {
+    enqueueMsg(msg)
+    tryToSend()
+  }
+
+
+  def fail(msg: Destination.Fail) {
+    enqueueMsg(msg.messages.map(_.envelope))
+    subscriptionReady(msg.subscription)
+  }
+
+  private def subscriptionReady(subscription: Subscription) {
+    if (subscriptions.contains(subscription)) {
+      readySubscriptions = readySubscriptions.enqueue(subscription)
+    }
+    tryToSend()
+  }
+
   private def dequeueMsg = {
     val (newMsg, q) = messages.dequeue
     messages = q
+    if (messages.size == 0) {
+      persister ! Load(maxQueueSize * 3 / 4)
+    }
     newMsg
+  }
+
+  def enqueueMsg(msg: Envelope) {
+    lastReceivedMessageId = msg.id
+    messages = workMode match {
+      case Instant =>
+        persister ! StoreOne(msg, true)
+        messages.enqueue(msg)
+      case Paging =>
+        persister ! StoreOne(msg, false)
+        messages
+    }
+    if (messages.size > maxQueueSize) {
+      workMode = Paging
+    }
+  }
+
+  def enqueueMsg(msg: Iterable[Envelope]) {
+    messages = workMode match {
+      case Instant =>
+        persister ! StoreList(msg, true)
+        messages.enqueue(msg)
+      case Paging =>
+        persister ! StoreList(msg, false)
+        messages
+    }
+    if (messages.size > maxQueueSize) {
+      workMode = Paging
+    }
   }
 
   private def addSubscription(subscription: Subscription) {
@@ -106,4 +154,8 @@ object Destination {
   case class Loaded(envelopes: Vector[Envelope])
 
   case class Stop()
+
+  abstract sealed class WorkMode
+  object Instant extends WorkMode
+  object Paging extends WorkMode
 }

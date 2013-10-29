@@ -23,9 +23,9 @@ class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
         Envelope("in1", 1, "q".getBytes),
         Envelope("in2", 2, "aa".getBytes),
         Envelope("in3", 3, "zzz".getBytes)
-      ))
+      ) ,false)
       persister ! Remove(List("in2", "in3"))
-      persister ! StoreOne(Envelope("in4", 4, "xxxx".getBytes))
+      persister ! StoreOne(Envelope("in4", 4, "xxxx".getBytes), false)
       persister ! Remove(List("in1"))
 
       persister.storeView.size must eventually(10, 1 second) (be_==(7))
@@ -44,14 +44,14 @@ class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
       )
     }
     "store 5 In's and 3 Out's and return 4 Envelopes on load query(4)" in new ImMemoryPersisterSpecScope {
-      persister ! StoreOne(Envelope("in1", 4, "qwer".getBytes))
+      persister ! StoreOne(Envelope("in1", 4, "qwer".getBytes), false)
       persister ! Remove(List("inn1"))
-      persister ! StoreOne(Envelope("in2", 4, "asdf".getBytes))
+      persister ! StoreOne(Envelope("in2", 4, "asdf".getBytes), false)
       persister ! Remove(List("inn2"))
-      persister ! StoreOne(Envelope("in3", 4, "xzcv".getBytes))
+      persister ! StoreOne(Envelope("in3", 4, "xzcv".getBytes), false)
       persister ! Remove(List("inn3"))
-      persister ! StoreOne(Envelope("in4", 4, "tyui".getBytes))
-      persister ! StoreOne(Envelope("in5", 4, "ghjk".getBytes))
+      persister ! StoreOne(Envelope("in4", 4, "tyui".getBytes), false)
+      persister ! StoreOne(Envelope("in5", 4, "ghjk".getBytes), false)
 
       val ans = persister !? Load(4)
       ans match {
@@ -73,11 +73,11 @@ class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
       }
     }
     "store 3 In's and 2 Out's and return 3 Envelopes on load query(4)" in new ImMemoryPersisterSpecScope {
-      persister ! StoreOne(Envelope("in1", 4, "qwer".getBytes))
+      persister ! StoreOne(Envelope("in1", 4, "qwer".getBytes), false)
       persister ! Remove(List("inn1"))
-      persister ! StoreOne(Envelope("in2", 4, "asdf".getBytes))
+      persister ! StoreOne(Envelope("in2", 4, "asdf".getBytes), false)
       persister ! Remove(List("inn2"))
-      persister ! StoreOne(Envelope("in3", 4, "xzcv".getBytes))
+      persister ! StoreOne(Envelope("in3", 4, "xzcv".getBytes), false)
 
       val ans = persister !? Load(4)
       ans match {
