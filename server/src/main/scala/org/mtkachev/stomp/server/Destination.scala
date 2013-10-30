@@ -20,6 +20,8 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
   private var workMode: WorkMode = Instant
   private var lastReceivedMessageId: String = ""
 
+  private val loadSize = if(maxQueueSize >= 3) maxQueueSize * 3 / 4 else 1
+
   def subscriptionSet = subscriptions
   def readySubscriptionQueue = readySubscriptions
   def messageQueue = messages
@@ -94,7 +96,7 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
     val (newMsg, q) = messages.dequeue
     messages = q
     if (messages.size == 0) {
-      persister ! Load(maxQueueSize * 3 / 4)
+      persister ! Load(loadSize)
     }
     newMsg
   }
