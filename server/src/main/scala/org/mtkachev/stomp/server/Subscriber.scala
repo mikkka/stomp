@@ -47,6 +47,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
             case frame: Disconnect => {
               if(!transport.isClosing) transport.close()
               abortAllTx()
+              pendingAcks.map(_._2).foreach(fail)
+              subscriptions.foreach(s => qm ! DestinationManager.UnSubscribe(s))
               exit()
             }
 
