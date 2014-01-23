@@ -204,16 +204,14 @@ class SubscriberSpecification extends Specification {
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
 
-      val firstMsgId = subscriber.pendingAcksMap.find(_._2.envelope.body == content1).get._1
-      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), None))
+      subscriber ! FrameMsg(Ack(envelope1.id, Some("tx1"), None))
 
       waitForWorkout
       //got ready msg
       destination.messages.size must eventually(10, 100 millis)(be_==(1))
       destination.messages(0) must_== Destination.Ready(subscription)
 
-      val secondMsgId = subscriber.pendingAcksMap.find(_._2.envelope.body == content2).get._1
-      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), None))
+      subscriber ! FrameMsg(Ack(envelope2.id, Some("tx1"), None))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
 
@@ -236,9 +234,9 @@ class SubscriberSpecification extends Specification {
       //got 2 fails after rollback
       destination.messages.size must eventually(10, 100 millis)(be_==(4))
       destination.messages(2) must_==
-        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(firstMsgId, 10, content1))))
+        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(envelope1.id, 10, content1))))
       destination.messages(3) must_==
-        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(secondMsgId, 10, content2))))
+        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(envelope2.id, 10, content2))))
 
       success
     }
