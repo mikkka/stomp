@@ -5,8 +5,7 @@ import actors.Actor
 import java.util.UUID
 import org.mtkachev.stomp.server.Subscriber._
 import scala.None
-import collection.mutable.ListBuffer
-import collection.mutable.Map
+import scala.collection.mutable.ListBuffer
 
 /**
  * User: mick
@@ -18,8 +17,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
                  val login: String, val password: String) extends Actor {
 
   //* awaiting acks
-  private val pendingAcks = Map.empty[String, Receive]
-  private val transactions = Map.empty[String, Transaction]
+  private var pendingAcks = Map.empty[String, Receive]
+  private var transactions = Map.empty[String, Transaction]
   private var subscriptions = List.empty[Subscription]
 
   def pendingAcksMap = pendingAcks
@@ -88,7 +87,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
 
             case frame: Begin => {
               transactions.get(frame.transactionId) match {
-                case None => transactions += (frame.transactionId -> new Transaction)
+                case None => transactions = transactions + (frame.transactionId -> new Transaction)
                 case _ =>
               }
               ()
@@ -165,27 +164,28 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
     new Message(subscription.destination, envelope.id, envelope.contentLength, envelope.body)
 
   def addToPendingAcks(msg: Receive) {
-    pendingAcks.put(msg.envelope.id, msg)
+    pendingAcks = pendingAcks + (msg.envelope.id -> msg)
   }
 
   def doAck(messageId: String) {
     //ACKING EVERYTIME!!!
-    pendingAcks.remove(messageId).foreach(ack)
+    pendingAcks.get(messageId).foreach(ack)
+    pendingAcks = pendingAcks - messageId
   }
 
   def commitTx(txKey: String) {
     doWithTx(Some(txKey), tx => tx.commt())
-    transactions.remove(txKey)
+    transactions = transactions - txKey
   }
 
   def abortAllTx() {
     transactions.foreach(_._2.abort())
-    transactions.clear()
+    transactions = Map.empty
   }
 
   def abortTx(txKey: String) {
     doWithTx(Some(txKey), tx => tx.abort())
-    transactions.remove(txKey)
+    transactions = transactions - txKey
   }
 
   def doWithTx(txKeyOpt: Option[String], f: Transaction => Unit): Boolean = txKeyOpt match {
@@ -222,10 +222,11 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
     }
 
     def addAck(messageId: String) {
-      pendingAcks.remove(messageId).foreach{rcv =>
+      pendingAcks.get(messageId).foreach{rcv =>
         acks.append(rcv)
         ready(rcv)
       }
+      pendingAcks = pendingAcks - messageId
     }
   }
 }

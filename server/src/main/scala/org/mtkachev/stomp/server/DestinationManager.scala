@@ -10,7 +10,11 @@ import org.mtkachev.stomp.server.DestinationManager._
  */
 
 class DestinationManager extends Actor {
+  // queue name -> destination actor
   private var queues = new HashMap[String, Destination]
+  /**
+   * keep it for checking "subscription" requests after new destination creation
+   */
   private var subscriptions = List.empty[Subscription]
 
   def queueMap = queues
@@ -20,12 +24,23 @@ class DestinationManager extends Actor {
     loop {
       react {
         case msg: Subscribe => {
+          /**
+           * add subscription to subscriptions list
+           * send message AddSubscriber to suitable Destination
+           */
           subscribe(msg.subscription)
         }
         case msg: UnSubscribe => {
+          /**
+           * remove subscription from subscriptions list
+           * send message RemoveSubscriber to suitable Destination
+           */
           unSubscribe(msg.subscription)
         }
         case msg: Dispatch => {
+          /**
+           * find or create destination suitable for message destination
+           */
           dispatchMessage(msg)
         }
         case msg: Stop => {
