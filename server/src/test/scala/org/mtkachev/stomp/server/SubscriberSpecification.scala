@@ -182,9 +182,9 @@ class SubscriberSpecification extends Specification {
     }
     "tx rollback" in new SubscriberSpecScope {
       val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
-      val content1 = "1234567890_1".getBytes
-      val content2 = "2345678901_1".getBytes
-      val content3 = "2345678901_1".getBytes
+      val content1 = "content1__".getBytes
+      val content2 = "content2__".getBytes
+      val content3 = "content3__".getBytes
 
       subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, None))
       subscriber ! FrameMsg(Begin("tx1", None))
@@ -204,18 +204,17 @@ class SubscriberSpecification extends Specification {
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
 
-      val firstMsgId = subscriber.pendingAcksMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), None))
+      subscriber ! FrameMsg(Ack(envelope1.id, Some("tx1"), None))
 
       waitForWorkout
       //got ready msg
       destination.messages.size must eventually(10, 100 millis)(be_==(1))
       destination.messages(0) must_== Destination.Ready(subscription)
 
-      val secondMsgId = subscriber.pendingAcksMap.keysIterator.next()
-      subscriber ! FrameMsg(Ack(secondMsgId, Some("tx1"), None))
+      subscriber ! FrameMsg(Ack(envelope2.id, Some("tx1"), None))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
+
       //got ready msg
       destination.messages.size must eventually(10, 100 millis)(be_==(2))
       destination.messages(1) must_== Destination.Ready(subscription)
@@ -232,15 +231,59 @@ class SubscriberSpecification extends Specification {
 
       subscriber.pendingAcksMap.size must_== 0
 
-      //got 2 fails after commit
+      //got 2 fails after rollback
       destination.messages.size must eventually(10, 100 millis)(be_==(4))
       destination.messages(2) must_==
-        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(firstMsgId, 10, content1))))
+        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(envelope1.id, 10, content1))))
       destination.messages(3) must_==
-        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(secondMsgId, 10, content2))))
+        Destination.Fail(subscription, List(Destination.Dispatch(Envelope(envelope2.id, 10, content2))))
 
       success
     }
+    "on disconnect all resources should be correctly closed" in new SubscriberSpecScope {
+      val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+      val content1 = "content1__".getBytes
+      val content2 = "content2__".getBytes
+
+      subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, None))
+
+      val envelope1 = Envelope(10, content1)
+      val envelope2 = Envelope(10, content2)
+
+      //1st msg wo tx but no ack
+      val srecv1 = Subscriber.Receive(destination, subscription, envelope1)
+      subscriber ! srecv1
+
+      //2nd msg within tx, got ack, but no tx commit
+      subscriber ! FrameMsg(Begin("tx1", None))
+      val srecv2 = Subscriber.Receive(destination, subscription, envelope2)
+      subscriber ! srecv2
+
+      waitForWorkout
+      subscriber.pendingAcksMap.size must eventually(10, 100 millis)(be_==(2))
+
+      //val secondMsgId = subscriber.pendingAcksMap.find(_._2.envelope.body == content2).get._1
+      subscriber ! FrameMsg(Ack(envelope2.id, Some("tx1"), None))
+
+      waitForWorkout
+      subscriber.pendingAcksMap.size must eventually(10, 100 millis)(be_==(1))
+
+      //disconnect
+
+      subscriber ! FrameMsg(Disconnect(None))
+
+      // should be ready (tx ack), fail1 (msg1 return), fail2 (msg2 return)
+      destination.messages.size must eventually(10, 100 millis)(be_==(3))
+      destination.messages must containAllOf(List(
+        Destination.Ready(subscription),
+        Destination.Fail(subscription, List(Destination.Dispatch(envelope1))),
+        Destination.Fail(subscription, List(Destination.Dispatch(envelope2)))
+      ))
+      // check dest manager for unsubscribe
+      dm.messages must contain(DestinationManager.UnSubscribe(subscription))
+
+      success
+     }
   }
 
   trait SubscriberSpecScope extends Around with Scope with Mockito {
