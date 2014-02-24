@@ -7,7 +7,7 @@ import org.specs2.execute.AsResult
 import org.specs2.execute.Result._
 import Persister._
 import org.mtkachev.stomp.server.{Destination, Envelope}
-import org.mtkachev.stomp.server.persistence.ImMemoryPersister.{Out, In}
+import org.mtkachev.stomp.server.persistence.InMemoryPersister.{Out, In}
 import org.specs2.matcher.ThrownMessages
 
 /**
@@ -15,7 +15,7 @@ import org.specs2.matcher.ThrownMessages
  * Date: 04.09.13
  * Time: 19:45
  */
-class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
+class InMemoryPersisterSpecification extends Specification with ThrownMessages {
   "in memory persister" should {
     "store events" in new ImMemoryPersisterSpecScope {
 
@@ -99,7 +99,7 @@ class ImMemoryPersisterSpecification extends Specification with ThrownMessages {
   }
 
   trait ImMemoryPersisterSpecScope extends Around with Scope with Mockito {
-    val persister = new ImMemoryPersister
+    val persister = new InMemoryPersister
 
     def around[T : AsResult](t: =>T) = {
       issues(

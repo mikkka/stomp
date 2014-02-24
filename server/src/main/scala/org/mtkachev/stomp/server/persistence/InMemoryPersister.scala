@@ -1,7 +1,7 @@
 package org.mtkachev.stomp.server.persistence
 
 import org.mtkachev.stomp.server.persistence.Persister._
-import org.mtkachev.stomp.server.persistence.ImMemoryPersister._
+import org.mtkachev.stomp.server.persistence.InMemoryPersister._
 import org.mtkachev.stomp.server.Destination.Loaded
 import org.mtkachev.stomp.server.Envelope
 
@@ -10,7 +10,7 @@ import org.mtkachev.stomp.server.Envelope
  * Date: 02.09.13
  * Time: 18:42
  */
-class ImMemoryPersister extends Persister {
+class InMemoryPersister extends Persister {
   private var store = Vector.empty[Event]
   def storeView = store.view
 
@@ -56,7 +56,7 @@ class ImMemoryPersister extends Persister {
   }
 }
 
-object ImMemoryPersister {
+object InMemoryPersister {
   trait Event {
     val id: String
   }

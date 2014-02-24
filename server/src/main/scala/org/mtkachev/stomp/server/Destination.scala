@@ -3,7 +3,7 @@ package org.mtkachev.stomp.server
 import actors.Actor
 import org.mtkachev.stomp.server.Destination._
 import scala.collection.immutable.{HashSet, Queue, Iterable}
-import org.mtkachev.stomp.server.persistence.ImMemoryPersister
+import org.mtkachev.stomp.server.persistence.InMemoryPersister
 import org.mtkachev.stomp.server.persistence.Persister.{Remove, Load, StoreOne, StoreList}
 
 /**
@@ -16,7 +16,7 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
   private var subscriptions = HashSet.empty[Subscription]
   private var readySubscriptions = Queue.empty[Subscription]
   private var messages = Queue.empty[Envelope]
-  private val persister = new ImMemoryPersister
+  private val persister = new InMemoryPersister
   private var workMode: WorkMode = Instant
   private var lastReceivedMessageId: String = ""
 
