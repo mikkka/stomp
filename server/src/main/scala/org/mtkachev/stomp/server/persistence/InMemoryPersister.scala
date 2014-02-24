@@ -4,6 +4,7 @@ import org.mtkachev.stomp.server.persistence.Persister._
 import org.mtkachev.stomp.server.persistence.InMemoryPersister._
 import org.mtkachev.stomp.server.Destination.Loaded
 import org.mtkachev.stomp.server.Envelope
+import scala.annotation.tailrec
 
 /**
  * User: mick
@@ -41,6 +42,7 @@ class InMemoryPersister extends Persister {
   }
 
   def load(quant: Int): Vector[In] = {
+    @tailrec
     def loadIter(counter: Int, acc: Vector[In]): Vector[In] = {
       if(counter == 0 || store.isEmpty) acc
       else {
