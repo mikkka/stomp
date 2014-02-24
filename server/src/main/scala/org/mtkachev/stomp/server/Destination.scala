@@ -13,11 +13,17 @@ import org.mtkachev.stomp.server.persistence.Persister.{Remove, Load, StoreOne, 
  */
 
 class Destination(val name: String, val maxQueueSize: Int) extends Actor {
+  //current destination subscriptions
   private var subscriptions = HashSet.empty[Subscription]
+  //subscriptions that are ready for message recv
   private var readySubscriptions = Queue.empty[Subscription]
+  //messages buffer
   private var messages = Queue.empty[Envelope]
+  //messages persister
   private val persister = new InMemoryPersister
+  //work mode
   private var workMode: WorkMode = Instant
+  // id of last message that was added to message queue
   private var lastReceivedMessageId: String = ""
 
   private val loadSize = if(maxQueueSize >= 3) maxQueueSize * 3 / 4 else 1
