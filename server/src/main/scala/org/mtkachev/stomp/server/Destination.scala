@@ -59,7 +59,7 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
         case msg: Loaded => {
           if(!msg.envelopes.isEmpty) {
             enqueueMsg(msg.envelopes)
-            if(msg.envelopes.last.id ==lastReceivedMessageId) {
+            if(msg.envelopes.last.id == lastReceivedMessageId) {
               workMode = Instant
             }
           }
@@ -109,6 +109,7 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
 
   def enqueueMsg(msg: Envelope) {
     lastReceivedMessageId = msg.id
+
     messages = workMode match {
       case Instant =>
         persister ! StoreOne(msg, true)
@@ -123,6 +124,8 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
   }
 
   def enqueueMsg(msg: Iterable[Envelope]) {
+    lastReceivedMessageId = msg.last.id
+
     messages = workMode match {
       case Instant =>
         persister ! StoreList(msg, true)
