@@ -42,7 +42,7 @@ class SubscriberSpecification extends Specification {
       dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))))
       dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/baz/ger", subscriber, acknowledge = false, None)))
 
-      subscriber.getState must(be(Actor.State.Suspended))
+      subscriber.getState must be(Actor.State.Suspended)
 
       success
     }
@@ -51,12 +51,12 @@ class SubscriberSpecification extends Specification {
       subscriber ! FrameMsg(Send("foo/bar", 10, None, Some("foobar"), content))
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
-      dm.messages exists (_ match {
+      dm.messages exists {
         case DestinationManager.Dispatch("foo/bar", x) => x.contentLength == 10 && x.body == content
         case _ => false
-      })
+      }
 
-      subscriber.getState must(be(Actor.State.Suspended))
+      subscriber.getState must be(Actor.State.Suspended)
       there was one(transportCtx).write(new Receipt("foobar"))
 
       success
@@ -76,7 +76,7 @@ class SubscriberSpecification extends Specification {
       destination.messages.size must eventually(10, 100 millis)(be_==(1))
       destination.messages(0) must_== Destination.Ack(subscriber.subscriptionsList(1), List("id42"))
 
-      subscriber.getState must(be(Actor.State.Suspended))
+      subscriber.getState must be(Actor.State.Suspended)
 
       success
     }
@@ -117,7 +117,7 @@ class SubscriberSpecification extends Specification {
       there was one(transportCtx).write(argThat(matchMessage(new Message("foo", "", 10, content11))))
       there was one(transportCtx).write(argThat(matchMessage(new Message("baz", "", 10, content12))))
 
-      subscriber.getState must(be(Actor.State.Suspended))
+      subscriber.getState must be(Actor.State.Suspended)
 
       success
     }

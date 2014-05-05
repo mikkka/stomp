@@ -37,10 +37,10 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
         ("in1", "q".getBytes.toSeq),
         ("in2", "aa".getBytes.toSeq),
         ("in3", "zzz".getBytes.toSeq),
-        ("in2"),
-        ("in3"),
+        "in2",
+        "in3",
         ("in4", "xxxx".getBytes.toSeq),
-        ("in1")
+        "in1"
       )
     }
     "store 5 In's and 3 Out's and return 4 Envelopes on load query(4)" in new ImMemoryPersisterSpecScope {
@@ -55,7 +55,7 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
 
       val ans = persister !? Load(4)
       ans match {
-        case loaded: Destination.Loaded => {
+        case loaded: Destination.Loaded =>
           loaded.envelopes.map{e => (e.id, e.contentLength, e.body.toSeq)} must_==
           Vector(
             ("in1", 4, "qwer".getBytes.toSeq),
@@ -66,10 +66,7 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
 
           persister.storeView.size must_== 1
           persister.storeView(0).id must_== "in5"
-        }
-        case _ => {
-          fail("wanted Destination.Loaded but got something completely different")
-        }
+        case _ => fail("wanted Destination.Loaded but got something completely different")
       }
     }
     "store 3 In's and 2 Out's and return 3 Envelopes on load query(4)" in new ImMemoryPersisterSpecScope {
@@ -81,7 +78,7 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
 
       val ans = persister !? Load(4)
       ans match {
-        case loaded: Destination.Loaded => {
+        case loaded: Destination.Loaded =>
           loaded.envelopes.map{e => (e.id, e.contentLength, e.body.toSeq)} must_==
             Vector(
               ("in1", 4, "qwer".getBytes.toSeq),
@@ -90,10 +87,7 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
             )
 
           persister.storeView.size must_== 0
-        }
-        case _ => {
-          fail("wanted Destination.Loaded but got something completely different")
-        }
+        case _ => fail("wanted Destination.Loaded but got something completely different")
       }
     }
   }
