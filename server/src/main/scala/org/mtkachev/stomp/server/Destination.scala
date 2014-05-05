@@ -88,7 +88,8 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
 
   def fail(msg: Destination.Fail) {
     enqueueMsg(msg.messages.map(_.envelope))
-    subscriptionReady(msg.subscription)
+    if(msg.ready)
+      subscriptionReady(msg.subscription)
   }
 
   private def subscriptionReady(subscription: Subscription) {
@@ -159,7 +160,7 @@ object Destination {
   case class Dispatch(envelope: Envelope)
 
   case class Ack(subscription: Subscription, messagesId: List[String])
-  case class Fail(subscription: Subscription, messages: List[Dispatch])
+  case class Fail(subscription: Subscription, messages: List[Dispatch], ready: Boolean = true)
   case class Ready(subscription: Subscription)
 
   case class Loaded(envelopes: Vector[Envelope])

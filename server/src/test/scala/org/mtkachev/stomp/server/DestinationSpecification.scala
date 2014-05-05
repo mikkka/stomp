@@ -94,6 +94,21 @@ class DestinationSpecification extends Specification {
       destination.messageQueue.size must_== 1
       destination.messageQueue(0) must_== env1
     }
+    "handle fail with ready == false and dispatch message from queue" in new DestinationSpecScope {
+      val (env1, env2) = subscribeAndTwoDispatch
+      destination ! Destination.Ready(subscription)
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(2))
+      subscriber.messages(1) must_== Subscriber.Receive(destination, subscription, env1)
+
+      destination ! Destination.Fail(subscription, List(Destination.Dispatch(env1)), false)
+
+      subscriber.messages.size must eventually(3, 1 second)(be_==(2))
+
+      destination.messageQueue.size must_== 2
+      destination.messageQueue(0) must_== env2
+      destination.messageQueue(1) must_== env1
+    }
     "handle ack after subscriber removal" in new DestinationSpecScope {
       destination.subscriptionSet.size must_== 0
 

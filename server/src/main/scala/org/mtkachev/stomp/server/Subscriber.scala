@@ -45,8 +45,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
           msg.frame match {
             case frame: Disconnect => {
               if(!transport.isClosing) transport.close()
-              abortAllTx()
-              pendingAcks.map(_._2).foreach(fail)
+              abortAllTx(false)
+              pendingAcks.map(_._2).foreach(fail(_, false))
               subscriptions.foreach(s => qm ! DestinationManager.UnSubscribe(s))
               exit()
             }
@@ -98,7 +98,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
             }
 
             case frame: Abort => {
-              abortTx(frame.transactionId)
+              abortTx(frame.transactionId, true)
             }
           }
         }
@@ -152,8 +152,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
     receive.destination ! Destination.Ack(receive.subscription, List(receive.envelope.id))
   }
 
-  def fail(receive: Receive) {
-    receive.destination ! Destination.Fail(receive.subscription, List(Destination.Dispatch(receive.envelope)))
+  def fail(receive: Receive, ready: Boolean) {
+    receive.destination ! Destination.Fail(receive.subscription, List(Destination.Dispatch(receive.envelope)), ready)
   }
 
   def ready(receive: Receive) {
@@ -178,13 +178,13 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
     transactions = transactions - txKey
   }
 
-  def abortAllTx() {
-    transactions.foreach(_._2.abort())
+  def abortAllTx(ready: Boolean) {
+    transactions.foreach(_._2.abort(ready))
     transactions = Map.empty
   }
 
-  def abortTx(txKey: String) {
-    doWithTx(Some(txKey), tx => tx.abort())
+  def abortTx(txKey: String, ready: Boolean) {
+    doWithTx(Some(txKey), tx => tx.abort(ready))
     transactions = transactions - txKey
   }
 
@@ -213,8 +213,8 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
       clear()
     }
 
-    def abort() {
-      acks.foreach(fail)
+    def abort(ready: Boolean) {
+      acks.foreach(fail(_, ready))
     }
 
     def addSend(send: Send) {

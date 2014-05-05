@@ -276,8 +276,8 @@ class SubscriberSpecification extends Specification {
       destination.messages.size must eventually(10, 100 millis)(be_==(3))
       destination.messages must containAllOf(List(
         Destination.Ready(subscription),
-        Destination.Fail(subscription, List(Destination.Dispatch(envelope1))),
-        Destination.Fail(subscription, List(Destination.Dispatch(envelope2)))
+        Destination.Fail(subscription, List(Destination.Dispatch(envelope1)), false),
+        Destination.Fail(subscription, List(Destination.Dispatch(envelope2)), false)
       ))
       // check dest manager for unsubscribe
       dm.messages must contain(DestinationManager.UnSubscribe(subscription))
