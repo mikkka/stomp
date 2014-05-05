@@ -159,7 +159,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
   }
 
   def commitTx(txKey: String) {
-    doWithTx(Some(txKey), tx => tx.commt())
+    doWithTx(Some(txKey), tx => tx.commit())
     transactions = transactions - txKey
   }
 
@@ -192,7 +192,7 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
       acks.clear()
     }
 
-    def commt() {
+    def commit() {
       sends.foreach(send)
       acks.foreach(ack)
       clear()

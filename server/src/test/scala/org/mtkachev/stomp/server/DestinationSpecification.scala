@@ -15,7 +15,7 @@ import org.specs2.execute.Result._
  */
 class DestinationSpecification extends Specification {
   "destination" should {
-    "handle add subscrber and remove subscriber" in new DestinationSpecScope {
+    "handle add subscriber and remove subscriber" in new DestinationSpecScope {
       destination.subscriptionSet.size must_== 0
 
       destination ! Destination.AddSubscriber(subscription)
@@ -157,7 +157,7 @@ class DestinationSpecification extends Specification {
 
       waitForWorkout()
 
-      //no rescv got because was not ready
+      //no recv got because was not ready
       subscriber.messages.size must eventually(3, 1 second)(be_==(1))
       subscriber.messages(0) must_== Subscriber.Subscribed(destination, subscription)
 

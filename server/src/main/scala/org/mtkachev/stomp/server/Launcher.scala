@@ -24,7 +24,7 @@ object Launcher extends App {
   bootstrap.
     group(new NioEventLoopGroup(), new NioEventLoopGroup()).
     channel(classOf[NioServerSocketChannel]).
-    childHandler(new StompServerinitializer(destinationManager, subscriberManager)).
+    childHandler(new StompServerInitializer(destinationManager, subscriberManager)).
     childOption(ChannelOption.TCP_NODELAY.asInstanceOf[ChannelOption[Any]], true).
     childOption(ChannelOption.SO_KEEPALIVE.asInstanceOf[ChannelOption[Any]], true)
 
@@ -35,7 +35,7 @@ object Launcher extends App {
     bootstrap.shutdown();
   }
 
-  class StompServerinitializer(destinationManager: DestinationManager,
+  class StompServerInitializer(destinationManager: DestinationManager,
                                subscriberManager: SubscriberManager) extends ChannelInitializer[SocketChannel] {
     def initChannel(ch: SocketChannel) {
       val p = ch.pipeline()

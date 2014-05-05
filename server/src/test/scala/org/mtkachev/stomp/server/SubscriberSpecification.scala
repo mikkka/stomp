@@ -20,7 +20,7 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
 
 class SubscriberSpecification extends Specification {
   "subscriber" should {
-    "subscrbe and unsubscribe" in new SubscriberSpecScope {
+    "subscribe and unsubscribe" in new SubscriberSpecScope {
       subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", ackMode = true, None))
       subscriber ! FrameMsg(Subscribe(None, "/baz/ger", ackMode = false, None))
 

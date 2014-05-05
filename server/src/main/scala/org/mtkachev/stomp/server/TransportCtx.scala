@@ -30,7 +30,7 @@ class NettyTransportCtx(val ctx: ChannelHandlerContext) extends TransportCtx {
 }
 
 object NettyTransportCtx {
-  val subscriberKey = new AttributeKey[Subscriber]("_subsrcriber")
+  val subscriberKey = new AttributeKey[Subscriber]("_subscriber")
 
   def setSubscriber(ctx: ChannelHandlerContext, subscriber: Subscriber) {
     ctx.attr(subscriberKey).set(subscriber)
