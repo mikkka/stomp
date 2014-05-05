@@ -50,7 +50,7 @@ class StompDecoder extends Decoder {
     } else
       readUntil(0.toByte) {bytes =>
         stop(FrameBuilder.composeFrame(
-            messageType, headers + ("content-length" -> (bytes.size).toString), bytes))
+            messageType, headers + ("content-length" -> bytes.size.toString), bytes))
       }
   }
 

@@ -1,7 +1,7 @@
 package org.mtkachev.scanetty.decode
 
 import io.netty.handler.codec.{ReplayingDecoder}
-import io.netty.channel.{Channel, ChannelHandlerContext}
+import io.netty.channel.{ChannelHandlerContext}
 import io.netty.buffer.ByteBuf
 
 abstract class Decoder extends ReplayingDecoder[Void] {
