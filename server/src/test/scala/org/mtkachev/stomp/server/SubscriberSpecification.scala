@@ -21,17 +21,17 @@ import org.mtkachev.stomp.server.Subscriber.FrameMsg
 class SubscriberSpecification extends Specification {
   "subscriber" should {
     "subscrbe and unsubscribe" in new SubscriberSpecScope {
-      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
-      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", false, None))
+      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", ackMode = true, None))
+      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", ackMode = false, None))
 
       subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
-      subscriber.subscriptionsList must contain(Subscription("/foo/bar", subscriber, true, Some("foo")))
-      subscriber.subscriptionsList must contain(Subscription("/baz/ger", subscriber, false, None))
+      subscriber.subscriptionsList must contain(Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo")))
+      subscriber.subscriptionsList must contain(Subscription("/baz/ger", subscriber, acknowledge = false, None))
 
       dm.messages.size must_== 2
-      dm.messages must contain(DestinationManager.Subscribe(Subscription("/foo/bar", subscriber, true, Some("foo"))))
-      dm.messages must contain(DestinationManager.Subscribe(Subscription("/baz/ger", subscriber, false, None)))
+      dm.messages must contain(DestinationManager.Subscribe(Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))))
+      dm.messages must contain(DestinationManager.Subscribe(Subscription("/baz/ger", subscriber, acknowledge = false, None)))
 
       subscriber ! FrameMsg(UnSubscribe(Some("foo"), None, None))
       subscriber ! FrameMsg(UnSubscribe(None, Some("/baz/ger"), None))
@@ -39,8 +39,8 @@ class SubscriberSpecification extends Specification {
       subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(0))
 
       dm.messages.size must_== 4
-      dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/foo/bar", subscriber, true, Some("foo"))))
-      dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/baz/ger", subscriber, false, None)))
+      dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))))
+      dm.messages must contain(DestinationManager.UnSubscribe(Subscription("/baz/ger", subscriber, acknowledge = false, None)))
 
       subscriber.getState must(be(Actor.State.Suspended))
 
@@ -62,8 +62,8 @@ class SubscriberSpecification extends Specification {
       success
     }
     "receive" in new SubscriberSpecScope {
-      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", false, None))
-      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", true, None))
+      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", ackMode = false, None))
+      subscriber ! FrameMsg(Subscribe(None, "/baz/ger", ackMode = true, None))
       subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
       val content = "0123456789".getBytes
@@ -81,8 +81,8 @@ class SubscriberSpecification extends Specification {
       success
     }
     "ack" in new SubscriberSpecScope {
-      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", true, None))
-      subscriber ! FrameMsg(Subscribe(Some("baz"), "/baz/bar", true, None))
+      subscriber ! FrameMsg(Subscribe(Some("foo"), "/foo/bar", ackMode = true, None))
+      subscriber ! FrameMsg(Subscribe(Some("baz"), "/baz/bar", ackMode = true, None))
       subscriber.subscriptionsList.size must eventually(10, 100 millis)(be_==(2))
 
       val content11 = "1234567890_1".getBytes
@@ -122,7 +122,7 @@ class SubscriberSpecification extends Specification {
       success
     }
     "tx commit" in new SubscriberSpecScope {
-      val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+      val subscription = Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))
       val content1 = "1234567890_1".getBytes
       val content2 = "2345678901_1".getBytes
       val content3 = "2345678901_1".getBytes
@@ -141,12 +141,12 @@ class SubscriberSpecification extends Specification {
       subscriber ! srecv1
       subscriber ! srecv2
 
-      waitForWorkout
+      waitForWorkout()
 
       val firstMsgId = subscriber.pendingAcksMap.keysIterator.next()
       subscriber ! FrameMsg(Ack(firstMsgId, Some("tx1"), None))
 
-      waitForWorkout
+      waitForWorkout()
       //got ready msg
       destination.messages.size must eventually(10, 100 millis)(be_==(1))
       destination.messages(0) must_== Destination.Ready(subscription)
@@ -161,7 +161,7 @@ class SubscriberSpecification extends Specification {
 
       subscriber ! FrameMsg(Send("foo/baz", 10, Some("tx1"), None, content3))
 
-      waitForWorkout
+      waitForWorkout()
 
       subscriber ! FrameMsg(Commit("tx1", None))
 
@@ -181,7 +181,7 @@ class SubscriberSpecification extends Specification {
       success
     }
     "tx rollback" in new SubscriberSpecScope {
-      val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+      val subscription = Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))
       val content1 = "content1__".getBytes
       val content2 = "content2__".getBytes
       val content3 = "content3__".getBytes
@@ -200,13 +200,13 @@ class SubscriberSpecification extends Specification {
       subscriber ! srecv1
       subscriber ! srecv2
 
-      waitForWorkout
+      waitForWorkout()
 
       dm.messages.size must eventually(10, 100 millis)(be_==(1))
 
       subscriber ! FrameMsg(Ack(envelope1.id, Some("tx1"), None))
 
-      waitForWorkout
+      waitForWorkout()
       //got ready msg
       destination.messages.size must eventually(10, 100 millis)(be_==(1))
       destination.messages(0) must_== Destination.Ready(subscription)
@@ -221,7 +221,7 @@ class SubscriberSpecification extends Specification {
 
       subscriber ! FrameMsg(Send("foo/baz", 10, Some("tx1"), None, content3))
 
-      waitForWorkout
+      waitForWorkout()
 
       subscriber ! FrameMsg(Abort("tx1", None))
 
@@ -241,7 +241,7 @@ class SubscriberSpecification extends Specification {
       success
     }
     "on disconnect all resources should be correctly closed" in new SubscriberSpecScope {
-      val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+      val subscription = Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))
       val content1 = "content1__".getBytes
       val content2 = "content2__".getBytes
 
@@ -259,13 +259,13 @@ class SubscriberSpecification extends Specification {
       val srecv2 = Subscriber.Receive(destination, subscription, envelope2)
       subscriber ! srecv2
 
-      waitForWorkout
+      waitForWorkout()
       subscriber.pendingAcksMap.size must eventually(10, 100 millis)(be_==(2))
 
       //val secondMsgId = subscriber.pendingAcksMap.find(_._2.envelope.body == content2).get._1
       subscriber ! FrameMsg(Ack(envelope2.id, Some("tx1"), None))
 
-      waitForWorkout
+      waitForWorkout()
       subscriber.pendingAcksMap.size must eventually(10, 100 millis)(be_==(1))
 
       //disconnect
@@ -276,8 +276,8 @@ class SubscriberSpecification extends Specification {
       destination.messages.size must eventually(10, 100 millis)(be_==(3))
       destination.messages must containAllOf(List(
         Destination.Ready(subscription),
-        Destination.Fail(subscription, List(Destination.Dispatch(envelope1)), false),
-        Destination.Fail(subscription, List(Destination.Dispatch(envelope2)), false)
+        Destination.Fail(subscription, List(Destination.Dispatch(envelope1)), ready = false),
+        Destination.Fail(subscription, List(Destination.Dispatch(envelope2)), ready = false)
       ))
       // check dest manager for unsubscribe
       dm.messages must contain(DestinationManager.UnSubscribe(subscription))
@@ -312,7 +312,7 @@ class SubscriberSpecification extends Specification {
       success
     }
 
-    def waitForWorkout {
+    def waitForWorkout() {
       subscriber.getState must eventually(10, 100 millis)(be(Actor.State.Suspended))
     }
   }

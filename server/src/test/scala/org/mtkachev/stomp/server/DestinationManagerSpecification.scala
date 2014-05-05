@@ -14,7 +14,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
   "queue manager" should {
 
     "handle subscribe message but no queue" in new DestinationManagerSpecScope {
-      val msg = Subscription("foo/bar", subscriber, true, Option("123"))
+      val msg = Subscription("foo/bar", subscriber, acknowledge = true, Option("123"))
       destinationManager ! DestinationManager.Subscribe(msg)
 
       destinationManager.subscriptionList.size must eventually(10, 1 second) (be_==(1))
@@ -31,7 +31,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     }
 
     "handle subscribe message for existing queue" in new DestinationManagerSpecScope {
-      val subscription = Subscription("foo/bar", subscriber, true, Option("123"))
+      val subscription = Subscription("foo/bar", subscriber, acknowledge = true, Option("123"))
 
       destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(0, Array.empty[Byte]))
       destinationManager ! DestinationManager.Subscribe(subscription)
@@ -44,7 +44,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     }
 
     "handle unsubscribe message for existing queue" in new DestinationManagerSpecScope {
-      val subscription = Subscription("foo/bar", subscriber, true, Option("123"))
+      val subscription = Subscription("foo/bar", subscriber, acknowledge = true, Option("123"))
 
       destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(0, Array.empty[Byte]))
       destinationManager ! DestinationManager.Subscribe(subscription)
@@ -58,7 +58,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
     }
 
     "dispatch data message" in new DestinationManagerSpecScope {
-      val subscription = Subscription("foo/bar", subscriber, false, Option("123"))
+      val subscription = Subscription("foo/bar", subscriber, acknowledge = false, Option("123"))
 
       destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(3, Array[Byte](01, 02, 03)))
       destinationManager ! DestinationManager.Subscribe(subscription)

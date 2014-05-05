@@ -8,10 +8,6 @@ import org.specs2.specification.Scope
 import org.specs2.execute.AsResult
 import org.specs2.execute.Result._
 
-import org.mtkachev.stomp.server.codec._
-import org.mtkachev.stomp.server.Matchers._
-import org.mtkachev.stomp.server.Subscriber.FrameMsg
-
 /**
  * User: mick
  * Date: 19.08.13
@@ -101,7 +97,7 @@ class DestinationSpecification extends Specification {
       subscriber.messages.size must eventually(3, 1 second)(be_==(2))
       subscriber.messages(1) must_== Subscriber.Receive(destination, subscription, env1)
 
-      destination ! Destination.Fail(subscription, List(Destination.Dispatch(env1)), false)
+      destination ! Destination.Fail(subscription, List(Destination.Dispatch(env1)), ready = false)
 
       subscriber.messages.size must eventually(3, 1 second)(be_==(2))
 
@@ -129,7 +125,7 @@ class DestinationSpecification extends Specification {
     val dm = new MockDestinationManager
     val transportCtx: TransportCtx = mock[TransportCtx]
     val subscriber: MockSubscriber = new MockSubscriber(dm, transportCtx)
-    val subscription = Subscription("/foo/bar", subscriber, true, Some("foo"))
+    val subscription = Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))
 
     val destination: Destination = new Destination("foo", 1024)
 
@@ -147,7 +143,7 @@ class DestinationSpecification extends Specification {
       success
     }
 
-    def waitForWorkout {
+    def waitForWorkout() {
       destination.getState must eventually(10, 100 millis)(be(Actor.State.Suspended))
     }
 
@@ -159,7 +155,7 @@ class DestinationSpecification extends Specification {
       destination ! Destination.AddSubscriber(subscription)
       destination ! Destination.Dispatch(env2)
 
-      waitForWorkout
+      waitForWorkout()
 
       //no rescv got because was not ready
       subscriber.messages.size must eventually(3, 1 second)(be_==(1))

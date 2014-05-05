@@ -34,80 +34,68 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
     loop {
       react {
 
-        case msg: FrameMsg => {
+        case msg: FrameMsg =>
           msg.frame.receipt match {
-            case Some(receiptId) => {
+            case Some(receiptId) =>
               receipt(receiptId)
-            }
-            case _ => {}
+            case _ => ()
           }
 
           msg.frame match {
-            case frame: Disconnect => {
+            case frame: Disconnect =>
               if(!transport.isClosing) transport.close()
-              abortAllTx(false)
-              pendingAcks.map(_._2).foreach(fail(_, false))
+              abortAllTx(ready = false)
+              pendingAcks.map(_._2).foreach(fail(_, ready = false))
               subscriptions.foreach(s => qm ! DestinationManager.UnSubscribe(s))
               exit()
-            }
 
-            case frame: Subscribe => {
+            case frame: Subscribe =>
               val subscription = new Subscription(frame.expression, this, frame.ackMode, frame.id)
               qm ! DestinationManager.Subscribe(subscription)
               subscriptions = subscription :: subscriptions
-            }
 
-            case frame: UnSubscribe => {
+            case frame: UnSubscribe =>
               val s = frame match {
-                case UnSubscribe(None, Some(expression), _) => {
+                case UnSubscribe(None, Some(expression), _) =>
                   subscriptions.find(s => s.expression != expression)
-                }
-                case UnSubscribe(id: Some[String], None, _) => {
+                case UnSubscribe(id: Some[String], None, _) =>
                   subscriptions.find(s => s.id != id)
-                }
                 case any => None
               }
               if(!s.isEmpty) {
                 qm ! DestinationManager.UnSubscribe(s.get)
                 subscriptions = subscriptions.filterNot(_ == s.get)
               }
-            }
 
-            case frame: Send => {
+            case frame: Send =>
               if(!doWithTx(frame.transactionId, tx => tx.addSend(frame))) {
                 send(frame)
               }
-            }
 
-            case frame: Ack => {
+            case frame: Ack =>
               if(!doWithTx(frame.transactionId, tx => tx.addAck(frame.messageId))) {
                 doAck(frame.messageId)
               }
-            }
 
-            case frame: Begin => {
+            case frame: Begin =>
               transactions.get(frame.transactionId) match {
                 case None => transactions = transactions + (frame.transactionId -> new Transaction)
                 case _ =>
               }
               ()
-            }
 
-            case frame: Commit => {
+            case frame: Commit =>
               commitTx(frame.transactionId)
-            }
 
-            case frame: Abort => {
-              abortTx(frame.transactionId, true)
-            }
+            case frame: Abort =>
+              abortTx(frame.transactionId, ready = true)
           }
-        }
 
-        case msg: Subscribed => {
+
+        case msg: Subscribed =>
           msg.destination ! Destination.Ready(msg.subscription)
-        }
 
-        case msg: Receive => {
+        case msg: Receive =>
           receive(msg.subscription, msg.envelope)
           if(!msg.subscription.acknowledge) {
             ack(msg)
@@ -115,18 +103,15 @@ class Subscriber(val qm: DestinationManager, val transport: TransportCtx,
             addToPendingAcks(msg)
           }
           ()
-        }
 
-        case msg: OnConnect => {
+        case msg: OnConnect =>
           transport.write(new Connected(this.sessionId))
           ()
-        }
 
-        case msg: Stop => {
+        case msg: Stop =>
           exit()
           transport.close()
           ()
-        }
       }
     }
   }
