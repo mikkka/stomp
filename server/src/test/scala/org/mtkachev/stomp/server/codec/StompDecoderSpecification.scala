@@ -404,7 +404,7 @@ transaction: gerTx
             retval += msg
           }
         } while (msg != null)
-        retval;
+        retval
       }
     }
   }

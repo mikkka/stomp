@@ -20,17 +20,14 @@ class SubscriberManager extends Actor {
   def act() {
     loop {
       react {
-        case msg: Connect => {
+        case msg: Connect =>
           subscribe(msg.queueManager, msg.transportCtx, msg.login, msg.password)
-        }
-        case msg: Disconnect => {
+        case msg: Disconnect =>
           unSubscribe(msg.subscriber)
-        }
-        case msg: Stop => {
+        case msg: Stop =>
           exit()
           subscribers.foreach(s => s ! Subscriber.Stop())
           subscribers = List.empty[Subscriber]
-        }
       }
     }
   }

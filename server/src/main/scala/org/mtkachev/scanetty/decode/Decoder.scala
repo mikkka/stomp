@@ -12,11 +12,10 @@ abstract class Decoder extends ReplayingDecoder[Void] {
   override def decode(ctx: ChannelHandlerContext, buffer: ByteBuf) = {
     def innerDecode(state: DecodeState, rule: Rule): AnyRef = rule match {
       case st: Stop => st.res
-      case r => {
+      case r =>
         current = r.apply(state)
         checkpoint()
         innerDecode(state, current)
-      }
     }
     //reset state there
     val res = innerDecode(new DecodeState(ctx, buffer), current)

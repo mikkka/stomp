@@ -23,30 +23,29 @@ class DestinationManager extends Actor {
   def act() {
     loop {
       react {
-        case msg: Subscribe => {
+        case msg: Subscribe =>
           /**
            * add subscription to subscriptions list
            * send message AddSubscriber to suitable Destination
            */
           subscribe(msg.subscription)
-        }
-        case msg: UnSubscribe => {
+
+        case msg: UnSubscribe =>
           /**
            * remove subscription from subscriptions list
            * send message RemoveSubscriber to suitable Destination
            */
           unSubscribe(msg.subscription)
-        }
-        case msg: Dispatch => {
+
+        case msg: Dispatch =>
           /**
            * find or create destination suitable for message destination
            */
           dispatchMessage(msg)
-        }
-        case msg: Stop => {
+
+        case msg: Stop =>
           exit()
           queues.foreach(el => el._2 ! Destination.Stop())
-        }
       }
     }
   }

@@ -11,8 +11,8 @@ class MainEventHandler(val subscriberManager: SubscriberManager, val queueManage
   }
 
   override def exceptionCaught(ctx: ChannelHandlerContext, e: Throwable) {
-    e.getCause.printStackTrace();
-    ctx.channel().close();
+    e.getCause.printStackTrace()
+    ctx.channel().close()
   }
 
   override def channelUnregistered(ctx: ChannelHandlerContext) {disconnect(ctx)}
@@ -25,32 +25,24 @@ class MainEventHandler(val subscriberManager: SubscriberManager, val queueManage
   private def handle(msg : InFrame, ctx: ChannelHandlerContext) {
     NettyTransportCtx.getSubscriber(ctx) match {
       case subscriber: Subscriber => msg match {
-        case msg: ConnectedStateFrame => {
+        case msg: ConnectedStateFrame =>
           subscriber ! Subscriber.FrameMsg(msg)
-        }
-        case any => {
-          handleErrorMessage(msg)
-        }
+
+        case any => handleErrorMessage(msg)
       }
       case _ => msg match {
-        case msg: Connect => {
+        case msg: Connect =>
           subscriberManager ! SubscriberManager.Connect(queueManager, NettyTransportCtx(ctx), msg.login, msg.password)
-        }
-        case any => {
-          handleErrorMessage(msg)
-        }
+
+        case any => handleErrorMessage(msg)
       }
     }
   }
 
   private def handleErrorMessage(msg: AnyRef) {
     msg match {
-      case msg: ErrorIn => {
-        println("error parse :" + msg)
-      }
-      case any => {
-        println("error not supported : " + msg)
-      }
+      case msg: ErrorIn => println("error parse :" + msg)
+      case any => println("error not supported : " + msg)
     }
   }
 }

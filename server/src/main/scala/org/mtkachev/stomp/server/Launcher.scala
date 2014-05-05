@@ -28,11 +28,11 @@ object Launcher extends App {
     childOption(ChannelOption.TCP_NODELAY.asInstanceOf[ChannelOption[Any]], true).
     childOption(ChannelOption.SO_KEEPALIVE.asInstanceOf[ChannelOption[Any]], true)
 
-    val ch = bootstrap.bind(listenPort).sync().channel();
+    val ch = bootstrap.bind(listenPort).sync().channel()
     println("stomp serv: starting on port " + listenPort)
     ch.closeFuture().sync();
   } finally {
-    bootstrap.shutdown();
+    bootstrap.shutdown()
   }
 
   class StompServerInitializer(destinationManager: DestinationManager,

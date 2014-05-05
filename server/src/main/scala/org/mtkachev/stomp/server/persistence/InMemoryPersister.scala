@@ -20,23 +20,20 @@ class InMemoryPersister extends Persister {
   override def act() {
     loop {
       react {
-        case Load(quantity) => {
+        case Load(quantity) =>
           sender ! Loaded(load(quantity).map(x => Envelope(x.id, x.body.size, x.body)))
-        }
-        case StoreOne(msg, move) => {
+
+        case StoreOne(msg, move) =>
           if(!move)
             store = store :+ In(msg.id, msg.body)
-        }
-        case StoreList(msgs, move) => {
+
+        case StoreList(msgs, move) =>
           if(!move)
             store = store ++ msgs.map(msg => In(msg.id, msg.body))
-        }
-        case Remove(id) => {
+
+        case Remove(id) =>
           store = store ++ id.map(Out)
-        }
-        case Stop => {
-          exit()
-        }
+        case Stop => exit()
       }
     }
   }
