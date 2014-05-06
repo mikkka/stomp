@@ -169,7 +169,7 @@ class SubscriberSpecification extends Specification {
 
       dm.messages.size must eventually(10, 100 millis)(be_==(2))
       dm.messages(0) must_== DestinationManager.Subscribe(subscription)
-      dm.messages(1) must beLike {case DestinationManager.Dispatch("foo/baz", Envelope(_, 10, content3)) => ok}
+      dm.messages(1) must beLike {case DestinationManager.Dispatch("foo/baz", Envelope(_, 10, `content3`)) => ok}
 
       subscriber.pendingAcksMap.size must_== 0
 
