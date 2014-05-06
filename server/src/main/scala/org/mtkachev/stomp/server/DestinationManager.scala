@@ -66,15 +66,12 @@ class DestinationManager extends Actor {
 
   private def dispatchMessage(msg: Dispatch) {
     queues.get(msg.destination) match {
-      case Some(queue) => {
-        queue ! Destination.Dispatch(msg.envelope)
-      }
-      case None => {
+      case Some(queue) => queue ! Destination.Dispatch(msg.envelope)
+      case None =>
         val queue = new Destination(msg.destination, 1024)
         queues = queues + (msg.destination -> queue)
         subscriptions.filter(s => s.matches(queue)).foreach(s => queue ! Destination.AddSubscriber(s))
         queue ! Destination.Dispatch(msg.envelope)
-      }
     }
   }
 }
