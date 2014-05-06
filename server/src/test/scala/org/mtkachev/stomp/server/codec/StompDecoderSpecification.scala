@@ -121,10 +121,9 @@ transaction: gerTx
           conn.password mustEqual "bar"
         }
         case _ => {
-          Failure("expected CONNECT")
+          failure("expected CONNECT")
         }
       }
-      success
     }
 
     "parse SEND command with content length" in new mock {
@@ -139,10 +138,9 @@ transaction: gerTx
           send.transactionId mustEqual None
         }
         case _ => {
-          Failure("expected SEND")
+          failure("expected SEND")
         }
       }
-      success
     }
 
     "parse SEND command without content length" in new mock {
@@ -157,10 +155,9 @@ transaction: gerTx
           send.transactionId mustEqual Option("123")
         }
         case _ => {
-          Failure("expected SEND")
+          failure("expected SEND")
         }
       }
-      success
     }
 
     "parse SUBSCRIBE simple" in new mock {
@@ -174,10 +171,9 @@ transaction: gerTx
           subscribe.id mustEqual None
         }
         case _ => {
-          Failure("expected SUBSCRIBE")
+          failure("expected SUBSCRIBE")
         }
       }
-      success
     }
 
     "parse SUBSCRIBE with client ack" in new mock {
@@ -191,10 +187,9 @@ transaction: gerTx
           subscribe.id mustEqual None
         }
         case _ => {
-          Failure("expected SUBSCRIBE")
+          failure("expected SUBSCRIBE")
         }
       }
-      success
     }
 
     "parse SUBSCRIBE with id" in new mock {
@@ -208,10 +203,9 @@ transaction: gerTx
           subscribe.id mustEqual Some("ger")
         }
         case _ => {
-          Failure("expected SUBSCRIBE")
+          failure("expected SUBSCRIBE")
         }
       }
-      success
     }
 
     "parse UNSUBSCRIBE with id" in new mock {
@@ -224,10 +218,9 @@ transaction: gerTx
           unsubscribe.id mustEqual Some("ger")
         }
         case _ => {
-          Failure("expected UNSUBSCRIBE")
+          failure("expected UNSUBSCRIBE")
         }
       }
-      success
     }
 
     "parse UNSUBSCRIBE with destination" in new mock {
@@ -240,10 +233,9 @@ transaction: gerTx
           unsubscribe.id mustEqual None
         }
         case _ => {
-          Failure("expected UNSUBSCRIBE")
+          failure("expected UNSUBSCRIBE")
         }
       }
-      success
     }
 
     "parse BEGIN" in new mock {
@@ -255,10 +247,9 @@ transaction: gerTx
           begin.transactionId mustEqual "gerTx"
         }
         case _ => {
-          Failure("expected BEGIN")
+          failure("expected BEGIN")
         }
       }
-      success
     }
 
     "parse COMMIT" in new mock {
@@ -270,10 +261,9 @@ transaction: gerTx
           commit.transactionId mustEqual "gerTx"
         }
         case _ => {
-          Failure("expected COMMIT")
+          failure("expected COMMIT")
         }
       }
-      success
     }
 
     "parse ACK with tx id" in new mock {
@@ -286,10 +276,9 @@ transaction: gerTx
           ack.messageId mustEqual "fooBarId"
         }
         case _ => {
-          Failure("expected COMMIT")
+          failure("expected ACK")
         }
       }
-      success
     }
 
     "parse ACK without tx id" in new mock {
@@ -302,10 +291,9 @@ transaction: gerTx
           ack.messageId mustEqual "fooBarId"
         }
         case _ => {
-          Failure("expected COMMIT")
+          failure("expected ACK")
         }
       }
-      success
     }
 
     "parse ABORT" in new mock {
@@ -317,10 +305,9 @@ transaction: gerTx
           abort.transactionId mustEqual "gerTx"
         }
         case _ => {
-          Failure("expected COMMIT")
+          failure("expected ABORT")
         }
       }
-      success
     }
 
     "parse DISCONNECT" in new mock {
@@ -331,57 +318,33 @@ transaction: gerTx
         case disconnect : Disconnect => {
         }
         case _ => {
-          Failure("expected COMMIT")
+          failure("expected DISCONNECT")
         }
       }
-      success
     }
 
-    "parse CONNECT SUBSCRIBE DISCONNECT" in new mock {
+    "parse CONNECT SUBSCRIBE SEND DISCONNECT" in new mock {
       embedder.offer(byteBuff(TEST_CONNECT + TEST_SUBSCRIBE_SIMPLE + TEST_SEND_WO_LENGTH +
               "\n\n" + TEST_DISCONNECT))
       val msgs = embedder.pollAll()
       msgs.size mustEqual 4
 
-      def connectMsg = msgs(0)
-      connectMsg match {
-        case connect : Connect => {
-        }
-        case _ => {
-          Failure("expected Connect")
-        }
-      }
-      
-      def subscribeMsg = msgs(1)
-      subscribeMsg match {
-        case subscribe : Subscribe => {
+      (msgs(0), msgs(1), msgs(2), msgs(3)) match {
+        case (connect: Connect, subscribe: Subscribe, send: Send, disconnect: Disconnect) => {
+          connect.login mustEqual "foo"
+          connect.password mustEqual "bar"
+
           subscribe.expression mustEqual "foo/bar/baz"
           subscribe.ackMode mustEqual false
           subscribe.id mustEqual None
+
+          send.destination mustEqual "foo/bar/baz"
+          send.transactionId mustEqual Some("123")
         }
         case _ => {
-          Failure("expected CONNECT")
-        }
-
-        def sendMsg = msgs(2)
-        sendMsg match {
-          case send : Send => {
-          }
-          case _ => {
-            Failure("expected SEND")
-          }
-        }
-
-        def disconnectMsg = msgs(3)
-        disconnectMsg match {
-          case disconnect : Disconnect => {
-          }
-          case _ => {
-            Failure("expected DISCONNECT")
-          }
+          failure("expected CONNECT SUBSCRIBE SEND DISCONNECT")
         }
       }
-      success
     }
   }
 
