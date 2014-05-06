@@ -1,10 +1,9 @@
 package org.mtkachev.stomp.server.codec
 
-import org.specs2.execute._
 import org.specs2.mutable._
 import org.specs2.specification.Scope
 
-import io.netty.channel.embedded.{EmbeddedByteChannel, EmbeddedMessageChannel}
+import io.netty.channel.embedded.EmbeddedByteChannel
 
 import io.netty.buffer.{ByteBuf, Unpooled}
 import io.netty.util.CharsetUtil
@@ -116,13 +115,11 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case conn : Connect => {
+        case conn : Connect =>
           conn.login mustEqual "foo"
           conn.password mustEqual "bar"
-        }
-        case _ => {
+        case _ =>
           failure("expected CONNECT")
-        }
       }
     }
 
@@ -131,15 +128,12 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case send : Send => {
+        case send : Send =>
           send.destination mustEqual "foo/bar/baz"
           send.contentLength mustEqual 22
           new String(send.body) mustEqual "foo bar baz ger ger!!!"
           send.transactionId mustEqual None
-        }
-        case _ => {
-          failure("expected SEND")
-        }
+        case _ => failure("expected SEND")
       }
     }
 
@@ -148,15 +142,12 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case send : Send => {
+        case send : Send =>
           send.destination mustEqual "foo/bar/baz"
           send.contentLength mustEqual 24
           new String(send.body) mustEqual "foo bar baz ger ger!!!\n\n"
           send.transactionId mustEqual Option("123")
-        }
-        case _ => {
-          failure("expected SEND")
-        }
+        case _ => failure("expected SEND")
       }
     }
 
@@ -165,14 +156,11 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case subscribe : Subscribe => {
+        case subscribe : Subscribe =>
           subscribe.expression mustEqual "foo/bar/baz"
           subscribe.ackMode mustEqual false
           subscribe.id mustEqual None
-        }
-        case _ => {
-          failure("expected SUBSCRIBE")
-        }
+        case _ => failure("expected SUBSCRIBE")
       }
     }
 
@@ -181,14 +169,11 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case subscribe : Subscribe => {
+        case subscribe : Subscribe =>
           subscribe.expression mustEqual "foo/bar/baz"
           subscribe.ackMode mustEqual true
           subscribe.id mustEqual None
-        }
-        case _ => {
-          failure("expected SUBSCRIBE")
-        }
+        case _ => failure("expected SUBSCRIBE")
       }
     }
 
@@ -197,14 +182,11 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case subscribe : Subscribe => {
+        case subscribe : Subscribe =>
           subscribe.expression mustEqual "foo/bar/baz"
           subscribe.ackMode mustEqual false
           subscribe.id mustEqual Some("ger")
-        }
-        case _ => {
-          failure("expected SUBSCRIBE")
-        }
+        case _ => failure("expected SUBSCRIBE")
       }
     }
 
@@ -213,13 +195,10 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case unsubscribe : UnSubscribe => {
+        case unsubscribe : UnSubscribe =>
           unsubscribe.expression mustEqual None
           unsubscribe.id mustEqual Some("ger")
-        }
-        case _ => {
-          failure("expected UNSUBSCRIBE")
-        }
+        case _ => failure("expected UNSUBSCRIBE")
       }
     }
 
@@ -228,13 +207,10 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case unsubscribe : UnSubscribe => {
+        case unsubscribe : UnSubscribe =>
           unsubscribe.expression mustEqual Some("foo/bar/baz")
           unsubscribe.id mustEqual None
-        }
-        case _ => {
-          failure("expected UNSUBSCRIBE")
-        }
+        case _ => failure("expected UNSUBSCRIBE")
       }
     }
 
@@ -243,12 +219,8 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case begin : Begin => {
-          begin.transactionId mustEqual "gerTx"
-        }
-        case _ => {
-          failure("expected BEGIN")
-        }
+        case begin : Begin => begin.transactionId mustEqual "gerTx"
+        case _ => failure("expected BEGIN")
       }
     }
 
@@ -257,12 +229,8 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case commit : Commit => {
-          commit.transactionId mustEqual "gerTx"
-        }
-        case _ => {
-          failure("expected COMMIT")
-        }
+        case commit : Commit => commit.transactionId mustEqual "gerTx"
+        case _ => failure("expected COMMIT")
       }
     }
 
@@ -271,13 +239,10 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case ack : Ack => {
+        case ack : Ack =>
           ack.transactionId mustEqual Some("gerTx")
           ack.messageId mustEqual "fooBarId"
-        }
-        case _ => {
-          failure("expected ACK")
-        }
+        case _ => failure("expected ACK")
       }
     }
 
@@ -286,13 +251,10 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case ack : Ack => {
+        case ack : Ack =>
           ack.transactionId mustEqual None
           ack.messageId mustEqual "fooBarId"
-        }
-        case _ => {
-          failure("expected ACK")
-        }
+        case _ => failure("expected ACK")
       }
     }
 
@@ -301,12 +263,8 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case abort : Abort => {
-          abort.transactionId mustEqual "gerTx"
-        }
-        case _ => {
-          failure("expected ABORT")
-        }
+        case abort : Abort => abort.transactionId mustEqual "gerTx"
+        case _ => failure("expected ABORT")
       }
     }
 
@@ -315,11 +273,8 @@ transaction: gerTx
       val msgs = embedder.pollAll()
       msgs.size mustEqual 1
       msgs(0) match {
-        case disconnect : Disconnect => {
-        }
-        case _ => {
-          failure("expected DISCONNECT")
-        }
+        case disconnect : Disconnect =>
+        case _ => failure("expected DISCONNECT")
       }
     }
 
@@ -330,7 +285,7 @@ transaction: gerTx
       msgs.size mustEqual 4
 
       (msgs(0), msgs(1), msgs(2), msgs(3)) match {
-        case (connect: Connect, subscribe: Subscribe, send: Send, disconnect: Disconnect) => {
+        case (connect: Connect, subscribe: Subscribe, send: Send, disconnect: Disconnect) =>
           connect.login mustEqual "foo"
           connect.password mustEqual "bar"
 
@@ -340,10 +295,8 @@ transaction: gerTx
 
           send.destination mustEqual "foo/bar/baz"
           send.transactionId mustEqual Some("123")
-        }
-        case _ => {
-          failure("expected CONNECT SUBSCRIBE SEND DISCONNECT")
-        }
+
+        case _ => failure("expected CONNECT SUBSCRIBE SEND DISCONNECT")
       }
     }
   }
