@@ -52,10 +52,10 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
           subscriptionReady(msg.subscription)
         case msg: Loaded =>
           if(!msg.envelopes.isEmpty) {
-            enqueueMsg(msg.envelopes)
             if(msg.envelopes.last.id == lastReceivedMessageId) {
               workMode = Instant
             }
+            messages.enqueue(msg.envelopes)
           }
         case msg: Stop =>
           exit()
@@ -73,13 +73,13 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
   }
 
   def dispatch(msg: Envelope) {
-    enqueueMsg(msg)
+    enqueueMsg(msg, fail = false)
     tryToSend()
   }
 
 
   def fail(msg: Destination.Fail) {
-    enqueueMsg(msg.messages.map(_.envelope))
+    enqueueMsg(msg.messages.map(_.envelope), fail = true)
     if(msg.ready)
       subscriptionReady(msg.subscription)
   }
@@ -100,15 +100,15 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
     newMsg
   }
 
-  def enqueueMsg(msg: Envelope) {
+  def enqueueMsg(msg: Envelope, fail: Boolean) {
     lastReceivedMessageId = msg.id
 
     messages = workMode match {
       case Instant =>
-        persister ! StoreOne(msg, move = true)
+        persister ! StoreOne(msg, fail = fail, move = true)
         messages.enqueue(msg)
       case Paging =>
-        persister ! StoreOne(msg, move = false)
+        persister ! StoreOne(msg, fail = fail, move = false)
         messages
     }
     if (messages.size > maxQueueSize) {
@@ -116,15 +116,15 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor {
     }
   }
 
-  def enqueueMsg(msg: Iterable[Envelope]) {
+  def enqueueMsg(msg: Iterable[Envelope], fail: Boolean) {
     lastReceivedMessageId = msg.last.id
 
     messages = workMode match {
       case Instant =>
-        persister ! StoreList(msg, move = true)
+        persister ! StoreList(msg, fail = fail, move = true)
         messages.enqueue(msg)
       case Paging =>
-        persister ! StoreList(msg, move = false)
+        persister ! StoreList(msg, fail = fail, move = false)
         messages
     }
     if (messages.size > maxQueueSize) {
