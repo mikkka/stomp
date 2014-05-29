@@ -16,5 +16,6 @@ libraryDependencies ++= Seq(
   "io.netty" % "netty-handler" % "4.0.0.Beta2",
   "org.mockito" % "mockito-core" % "1.9.5" % "test",
   "org.hamcrest" % "hamcrest-library" % "1.1" % "test",
-  "org.specs2" %% "specs2" % "1.13" % "test"
+  "org.specs2" %% "specs2" % "1.13" % "test",
+  "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
 )
