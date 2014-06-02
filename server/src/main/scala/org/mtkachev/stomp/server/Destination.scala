@@ -106,6 +106,7 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor with St
   private def dequeueMsg = {
     val (newMsg, q) = messages.dequeue
     messages = q
+    logger.debug(s"queue after message remove ${messages.size}")
     if (messages.size == 0) {
       logger.debug(s"need to load messages from store")
       persister ! Load(loadSize)
@@ -126,7 +127,7 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor with St
         logger.debug(s"queue after message add ${messages.size}")
         messages
     }
-    if (messages.size > maxQueueSize) {
+    if (messages.size == maxQueueSize && workMode == Instant) {
       workMode = Paging
       logger.debug(s"go PAGING mode")
     }
@@ -145,7 +146,7 @@ class Destination(val name: String, val maxQueueSize: Int) extends Actor with St
         logger.debug(s"queue after message add ${messages.size}")
         messages
     }
-    if (messages.size > maxQueueSize) {
+    if (messages.size == maxQueueSize && workMode == Instant) {
       workMode = Paging
       logger.debug(s"go PAGING mode")
     }
