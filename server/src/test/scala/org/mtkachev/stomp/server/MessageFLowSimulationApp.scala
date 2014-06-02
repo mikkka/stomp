@@ -16,8 +16,8 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
  * one queue -> many subscribers message flow emulation
  */
 object MessageFLowSimulationApp extends App with StrictLogging {
-  val messageSourceSleepMax = 20
-  val messageSourceSleepMin = 2
+  val messageSourceSleepMax = 50
+  val messageSourceSleepMin = 10
   val messageSourceMessagePerCycle = 1000
   val messageSourceCyclesCount = 5
   val subscriberCount = 3
@@ -44,19 +44,12 @@ object MessageFLowSimulationApp extends App with StrictLogging {
     @volatile var msgCounter = 0
     val queueRand = new Random()
     val bodyRand = new Random()
+    val sleepRand = new Random()
 
     def posInCycle = msgCounter % messagesPerCycle
     def isSlowCycle = (msgCounter / halfMessagesPerCycle) % 2 == 1
 
-    def sleepTime =
-      if (isSlowCycle) sleepMax else sleepMin
-
-/*
-    def sleepTime = {
-      val timeCoeff = (math.sin((1.0 * posInCycle / messagesPerCycle) * math.Pi * 2) + 1) / 2
-      (messageSourceSleepMin + (timeCoeff * (messageSourceSleepMax - messageSourceSleepMin))).toInt
-    }
-*/
+    def sleepTime = sleepRand.nextInt(if (isSlowCycle) sleepMax else sleepMin)
 
     val sendingThread = new Thread(new Runnable {
       override def run() {
@@ -86,6 +79,9 @@ object MessageFLowSimulationApp extends App with StrictLogging {
     @volatile var running = false
     @volatile var isTx = false
 
+    val sleepRand = new Random()
+    def sleep = sleepRand.nextInt(subscriberSleep)
+
     case class AnswerTask(delay: Int, msg: FrameMsg)
     val taskQueue = new LinkedBlockingQueue[AnswerTask]()
 
@@ -93,7 +89,7 @@ object MessageFLowSimulationApp extends App with StrictLogging {
       logger.debug(s"client $id: recv ${msg}")
       msg match {
         case out: Message =>
-          if(acknowledge) taskQueue.add(AnswerTask(subscriberSleep, FrameMsg(Ack(out.messageId, None, None))))
+          if(acknowledge) taskQueue.add(AnswerTask(sleep, FrameMsg(Ack(out.messageId, None, None))))
           recvLatch.countDown()
       }
 
