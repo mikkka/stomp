@@ -20,13 +20,12 @@ object MessageFLowSimulationApp extends App with StrictLogging {
   val messageSourceSleepMin = 2
   val messageSourceMessagePerCycle = 1000
   val messageSourceCyclesCount = 5
-  val subscriberCount = 1
+  val subscriberCount = 3
   val mainRand = new Random()
 
   def time = System.currentTimeMillis()
 
-  //val subscriberSleep = ((0.1 * (messageSourceSleepMin + messageSourceSleepMax) / 2) / subscriberCount).toInt
-  val subscriberSleep = 11
+  val subscriberSleep = ((1.0 * (messageSourceSleepMin + messageSourceSleepMax) / 2) * subscriberCount).toInt
 
   val dm = new DestinationManager
   dm.start()
