@@ -16,11 +16,12 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
  * one queue -> many subscribers message flow emulation
  */
 object MessageFLowSimulationApp extends App with StrictLogging {
-  val messageSourceSleepMax = 50
-  val messageSourceSleepMin = 10
-  val messageSourceMessagePerCycle = 1000
-  val messageSourceCyclesCount = 5
-  val subscriberCount = 3
+  val messageSourceSleepMin = args(0).toInt //ex. 10
+  val messageSourceSleepMax = args(1).toInt //ex. 50
+  val messageSourceMessagePerCycle = args(2).toInt //ex. 1000
+  val messageSourceCyclesCount = args(3).toInt //ex. 5
+  val subscriberCount = args(4).toInt //ex. 3
+
   val mainRand = new Random()
 
   def time = System.currentTimeMillis()
