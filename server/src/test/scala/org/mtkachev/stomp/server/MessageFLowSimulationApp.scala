@@ -6,6 +6,7 @@ import org.mtkachev.stomp.server.DestinationManager.{Stop => DMStop, Subscribe, 
 import java.util.concurrent.{LinkedBlockingQueue, CountDownLatch}
 import org.mtkachev.stomp.server.Subscriber.{Stop => SubscriberStop, FrameMsg}
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import java.util.UUID
 
 /**
  * User: mick
@@ -22,6 +23,11 @@ object MessageFLowSimulationApp extends App with StrictLogging {
   val messageSourceCyclesCount = args(3).toInt //ex. 5
   val subscriberCount = args(4).toInt //ex. 3
 
+  val txSizeMin = args(5).toInt // ex. 5
+  val txSizeMax = args(6).toInt // ex. 10
+  val txStartProbability = args(7).toDouble // ex. 0.1
+  val txSuccessProbability = args(8).toDouble  // ex 0.9
+
   val mainRand = new Random()
 
   def time = System.currentTimeMillis()
@@ -36,7 +42,6 @@ object MessageFLowSimulationApp extends App with StrictLogging {
 
   val messageCount = messageSourceMessagePerCycle * messageSourceCyclesCount
   val sendLatch = new CountDownLatch(messageCount)
-  val recvLatch = new CountDownLatch(messageCount)
 
   class MessageProducer(dm: DestinationManager,
                         sleepMin: Int, sleepMax: Int,
@@ -73,14 +78,23 @@ object MessageFLowSimulationApp extends App with StrictLogging {
   }
 
   val recvCounterSync = "recvCounterSync"
+  val recvLatch = new CountDownLatch(messageCount)
   var recvCounter = 0
 
-  class SubscriberBrain(acknowledge: Boolean, id: Int) extends TransportCtx {
+  class SubscriberBrain(acknowledge: Boolean, id: Int,
+                        txSizeMin: Int, txSizeMax: Int, txStartProbability: Double, txSuccessProbability: Double) extends TransportCtx {
     @volatile var _s: Subscriber = null
     @volatile var running = false
-    @volatile var isTx = false
+
+    val txSyncLock = new String("txSyncLock")
+    @volatile var txId = Option.empty[String]
+    var txMsgLef = 0
 
     val sleepRand = new Random()
+    val txStartRand = new Random()
+    val txSuccessRand = new Random()
+    val txSizeRand = new Random()
+
     def sleep = sleepRand.nextInt(subscriberSleep)
 
     case class AnswerTask(delay: Int, msg: FrameMsg)
@@ -90,7 +104,30 @@ object MessageFLowSimulationApp extends App with StrictLogging {
       logger.debug(s"client $id: recv ${msg}")
       msg match {
         case out: Message =>
-          if(acknowledge) taskQueue.add(AnswerTask(sleep, FrameMsg(Ack(out.messageId, None, None))))
+          if(acknowledge) taskQueue.add(AnswerTask(sleep, FrameMsg(Ack(out.messageId, txId, None))))
+          txSyncLock.synchronized {
+            if(txId.isEmpty) {
+              if(txStartRand.nextDouble() < txStartProbability) {
+                txId = Some(UUID.randomUUID().toString)
+                txMsgLef = txSizeRand.nextInt(txSizeMax - txSizeMin) + txSizeMin
+                logger.debug(s"client $id: begin tx ${txId.get} with size ${txMsgLef}")
+                taskQueue.add(AnswerTask(sleep, FrameMsg(Begin(txId.get, None))))
+              }
+            } else {
+              txMsgLef = txMsgLef - 1
+              if (txMsgLef <= 0) {
+                txMsgLef = 0
+                if(txSuccessRand.nextDouble() < txSuccessProbability) {
+                  logger.debug(s"client $id: commit tx ${txId.get}")
+                  taskQueue.add(AnswerTask(sleep, FrameMsg(Commit(txId.get, None))))
+                } else {
+                  logger.debug(s"client $id: abort tx ${txId.get}")
+                  taskQueue.add(AnswerTask(sleep, FrameMsg(Abort(txId.get, None))))
+                }
+                txId = Option.empty[String]
+              }
+            }
+          }
           recvLatch.countDown()
       }
 
@@ -131,7 +168,8 @@ object MessageFLowSimulationApp extends App with StrictLogging {
   val brainsUndSubs = (1 to subscriberCount).map{num =>
     //val acknowledge = mainRand.nextBoolean()
     val acknowledge = true
-    val brain = new SubscriberBrain(acknowledge = acknowledge, num)
+    val brain = new SubscriberBrain(acknowledge = acknowledge, num,
+      txSizeMin, txSizeMax, txStartProbability, txSuccessProbability)
     val subscriber = Subscriber(dm, brain, "foo" + num, "bar" + num)
     brain.setSubscriber(subscriber)
     dm ! Subscribe(Subscription("queue", subscriber, acknowledge = acknowledge, None))
