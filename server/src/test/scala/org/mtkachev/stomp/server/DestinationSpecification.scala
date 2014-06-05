@@ -165,7 +165,7 @@ class DestinationSpecification extends Specification {
     }
   }
 
-  class MockDestinationManager extends DestinationManager {
+  class MockDestinationManager extends DestinationManager(dest => new Destination(dest, 1024)) {
     val messages = new scala.collection.mutable.ListBuffer[AnyRef]
 
     start()

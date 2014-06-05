@@ -13,7 +13,7 @@ import socket.SocketChannel
 object Launcher extends App {
   val listenPort = 23456
 
-  val destinationManager = new DestinationManager
+  val destinationManager = new DestinationManager(dest => new Destination(dest, 1024))
   val subscriberManager = new SubscriberManager
 
   destinationManager.start()

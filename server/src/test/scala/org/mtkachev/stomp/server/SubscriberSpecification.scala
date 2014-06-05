@@ -317,7 +317,7 @@ class SubscriberSpecification extends Specification {
     }
   }
 
-  class MockDestinationManager extends DestinationManager {
+  class MockDestinationManager extends DestinationManager(dest => new MockDestination(dest)) {
     val messages = new scala.collection.mutable.ListBuffer[AnyRef]
 
     start()

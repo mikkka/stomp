@@ -9,7 +9,7 @@ import org.mtkachev.stomp.server.DestinationManager._
  * Time: 20:16:23
  */
 
-class DestinationManager extends Actor {
+class DestinationManager(destinationFactory: String => Destination) extends Actor {
   // queue name -> destination actor
   private var queues = new HashMap[String, Destination]
   /**
@@ -68,7 +68,7 @@ class DestinationManager extends Actor {
     queues.get(msg.destination) match {
       case Some(queue) => queue ! Destination.Dispatch(msg.envelope)
       case None =>
-        val queue = new Destination(msg.destination, 1024)
+        val queue = destinationFactory(msg.destination)
         queues = queues + (msg.destination -> queue)
         subscriptions.filter(s => s.matches(queue)).foreach(s => queue ! Destination.AddSubscriber(s))
         queue ! Destination.Dispatch(msg.envelope)
