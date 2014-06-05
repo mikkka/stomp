@@ -7,6 +7,7 @@ import org.specs2.mock._
 import org.specs2.specification.Scope
 import org.specs2.execute.AsResult
 import org.specs2.execute.Result._
+import org.mtkachev.stomp.server.persistence.InMemoryPersister
 
 /**
  * User: mick
@@ -127,7 +128,7 @@ class DestinationSpecification extends Specification {
     val subscriber: MockSubscriber = new MockSubscriber(dm, transportCtx)
     val subscription = Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))
 
-    val destination: Destination = new Destination("foo", 1024)
+    val destination: Destination = new Destination("foo", 1024, new InMemoryPersister)
 
     def around[T : AsResult](t: =>T) = {
       issues(
@@ -165,7 +166,7 @@ class DestinationSpecification extends Specification {
     }
   }
 
-  class MockDestinationManager extends DestinationManager(dest => new Destination(dest, 1024)) {
+  class MockDestinationManager extends DestinationManager(new SimpleDestinationFactory(1024)) {
     val messages = new scala.collection.mutable.ListBuffer[AnyRef]
 
     start()

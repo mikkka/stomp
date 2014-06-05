@@ -34,7 +34,7 @@ object MessageFLowSimulationApp extends App with StrictLogging {
 
   val subscriberSleep = ((1.0 * (messageSourceSleepMin + messageSourceSleepMax) / 2) * subscriberCount).toInt
 
-  val dm = new DestinationManager(dest => new Destination(dest, 256))
+  val dm = new DestinationManager(new SimpleDestinationFactory(256))
   dm.start()
 
   val messageProducer = new MessageProducer(dm, messageSourceSleepMin, messageSourceSleepMax,

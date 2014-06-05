@@ -3,7 +3,7 @@ package org.mtkachev.stomp.server
 import actors.Actor
 import org.mtkachev.stomp.server.Destination._
 import scala.collection.immutable.{HashSet, Queue, Iterable}
-import org.mtkachev.stomp.server.persistence.InMemoryPersister
+import org.mtkachev.stomp.server.persistence.{InMemoryPersister, Persister}
 import org.mtkachev.stomp.server.persistence.Persister.{Remove, Load, StoreOne, StoreList}
 import com.typesafe.scalalogging.slf4j.StrictLogging
 
@@ -13,15 +13,13 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
  * Time: 20:16:04
  */
 
-class Destination(val name: String, val maxQueueSize: Int) extends Actor with StrictLogging {
+class Destination(val name: String, val maxQueueSize: Int, private val persister: Persister) extends Actor with StrictLogging {
   //current destination subscriptions
   private var subscriptions = HashSet.empty[Subscription]
   //subscriptions that are ready for message recv
   private var readySubscriptions = Queue.empty[Subscription]
   //messages buffer
   private var messages = Queue.empty[Envelope]
-  //messages persister
-  private val persister = new InMemoryPersister
   //work mode
   private var workMode: WorkMode = Instant
   // id of last message that was added to message queue
@@ -184,4 +182,8 @@ object Destination {
   abstract sealed class WorkMode
   object Instant extends WorkMode
   object Paging extends WorkMode
+}
+
+class SimpleDestinationFactory(queueSize: Int) extends Function1[String, Destination] {
+  override def apply(name: String): Destination = new Destination(name, queueSize, new InMemoryPersister)
 }

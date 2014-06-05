@@ -82,7 +82,7 @@ class DestinationManagerSpecification extends Specification with Mockito {
   trait DestinationManagerSpecScope extends Around with Scope {
     //val transportCtx = new MockTransportCtx
     val transportCtx: TransportCtx = mock[TransportCtx]
-    val destinationManager = new DestinationManager(dest => new Destination(dest, 1024))
+    val destinationManager = new DestinationManager(new SimpleDestinationFactory(1024))
     val subscriber = new Subscriber(destinationManager, transportCtx, "foo", "bar")
 
     destinationManager.start()
