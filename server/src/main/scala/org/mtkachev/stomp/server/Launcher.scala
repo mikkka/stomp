@@ -8,12 +8,18 @@ import io.netty.channel._
 import nio.NioEventLoopGroup
 import socket.nio.NioServerSocketChannel
 import socket.SocketChannel
+import com.typesafe.config.ConfigFactory
+import org.mtkachev.stomp.server.persistence.InMemoryPersister
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 
-object Launcher extends App {
-  val listenPort = 23456
+object Launcher extends App with StrictLogging {
+  val config = ConfigFactory.load
 
-  val destinationManager = new DestinationManager(new SimpleDestinationFactory(1024))
+  val listenPort = config.getInt("listenPort")
+  val queueDefaultSize = config.getInt("queue.size")
+
+  val destinationManager = new DestinationManager(destionationFactory)
   val subscriberManager = new SubscriberManager
 
   destinationManager.start()
@@ -29,7 +35,7 @@ object Launcher extends App {
     childOption(ChannelOption.SO_KEEPALIVE.asInstanceOf[ChannelOption[Any]], true)
 
     val ch = bootstrap.bind(listenPort).sync().channel()
-    println("stomp serv: starting on port " + listenPort)
+    logger.info("stomp serv: starting on port " + listenPort)
     ch.closeFuture().sync();
   } finally {
     bootstrap.shutdown()
@@ -43,5 +49,10 @@ object Launcher extends App {
       p.addLast(new MainEventHandler(subscriberManager, destinationManager))
       p.addLast(new StompEncoder)
     }
+  }
+
+  def destionationFactory(name: String): Destination = {
+    val queueSize = if (config.hasPath(s"queue.$name.size")) config.getInt(s"queue.$name.size") else queueDefaultSize
+    new Destination(name, queueSize, new InMemoryPersister)
   }
 }
