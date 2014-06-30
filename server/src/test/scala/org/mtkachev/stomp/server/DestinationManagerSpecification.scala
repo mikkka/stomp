@@ -60,19 +60,19 @@ class DestinationManagerSpecification extends Specification with Mockito {
     "dispatch data message" in new DestinationManagerSpecScope {
       val subscription = Subscription("foo/bar", subscriber, acknowledge = false, Option("123"))
 
-      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(3, Array[Byte](01, 02, 03)))
+      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(3, Array[Byte](1, 2, 3)))
       destinationManager ! DestinationManager.Subscribe(subscription)
 
       destinationManager.queueMap("foo/bar").subscriptionSet.size must eventually(10, 1 second) (be_==(1))
 
-      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(4, Array[Byte](01, 02, 03, 04)))
+      destinationManager ! DestinationManager.Dispatch("foo/bar", Envelope(4, Array[Byte](1, 2, 3, 4)))
 
       //there was one(subscription).message(mockEq(3), any[Array[Byte]])
       there was two(transportCtx).write(any[Message])
       there was one(transportCtx).write(argThat(matchMessage(
-        new Message("123", "", 3, Array[Byte](01, 02, 03)))))
+        new Message("123", "", 3, Array[Byte](1, 2, 3)))))
       there was one(transportCtx).write(argThat(matchMessage(
-        new Message("123", "", 4, Array[Byte](01, 02, 03, 04)))))
+        new Message("123", "", 4, Array[Byte](1, 2, 3, 4)))))
 
       success
    }
