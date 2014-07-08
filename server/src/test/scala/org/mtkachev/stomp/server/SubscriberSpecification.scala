@@ -11,7 +11,7 @@ import org.specs2.execute.Result._
 import org.mtkachev.stomp.server.codec._
 import org.mtkachev.stomp.server.Matchers._
 import org.mtkachev.stomp.server.Subscriber.FrameMsg
-import org.mtkachev.stomp.server.persistence.InMemoryPersister
+import org.mtkachev.stomp.server.persistence.{StorePersisterWorker, InMemoryStore, Persister}
 
 /**
  * User: mick
@@ -333,7 +333,8 @@ class SubscriberSpecification extends Specification {
     }
   }
 
-  class MockDestination(override val name: String) extends Destination(name, 1024, new InMemoryPersister) {
+  class MockDestination(override val name: String)
+    extends Destination(name, 1024, new Persister(new StorePersisterWorker(new InMemoryStore))) {
     val messages = new scala.collection.mutable.ListBuffer[AnyRef]
 
     start()

@@ -7,7 +7,6 @@ import org.specs2.execute.AsResult
 import org.specs2.execute.Result._
 import Persister._
 import org.mtkachev.stomp.server.{Destination, Envelope}
-import org.mtkachev.stomp.server.persistence.InMemoryPersister.{Out, In}
 import org.specs2.matcher.ThrownMessages
 
 /**
@@ -28,10 +27,10 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
       persister ! StoreOne(Envelope("in4", 4, "xxxx".getBytes), fail = true, move = false)
       persister ! Remove(List("in1"))
 
-      persister.storeView.size must eventually(10, 1 second) (be_==(7))
-      val storeView = persister.storeView.toList.map {
-        case x: In => (x.id, x.body.toSeq)
-        case x: Out => x.id
+      store.view.size must eventually(10, 1 second) (be_==(7))
+      val storeView = store.view.toList.map {
+        case x: InMemoryStore.In => (x.id, x.body.toSeq)
+        case x: InMemoryStore.Out => x.id
       }
       storeView must_== List(
         ("in1", "q".getBytes.toSeq),
@@ -64,8 +63,8 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
             ("in4", 4, "tyui".getBytes.toSeq)
           )
 
-          persister.storeView.size must_== 1
-          persister.storeView(0).id must_== "in5"
+          store.view.size must_== 1
+          store.view(0).id must_== "in5"
         case _ => fail("wanted Destination.Loaded but got something completely different")
       }
     }
@@ -86,14 +85,15 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
               ("in3", 4, "xzcv".getBytes.toSeq)
             )
 
-          persister.storeView.size must_== 0
+          store.view.size must_== 0
         case _ => fail("wanted Destination.Loaded but got something completely different")
       }
     }
   }
 
   trait ImMemoryPersisterSpecScope extends Around with Scope with Mockito {
-    val persister = new InMemoryPersister
+    val store = new InMemoryStore
+    val persister = new Persister(new StorePersisterWorker(store))
 
     def around[T : AsResult](t: =>T) = {
       issues(

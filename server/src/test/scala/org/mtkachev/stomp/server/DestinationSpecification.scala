@@ -7,7 +7,7 @@ import org.specs2.mock._
 import org.specs2.specification.Scope
 import org.specs2.execute.AsResult
 import org.specs2.execute.Result._
-import org.mtkachev.stomp.server.persistence.InMemoryPersister
+import org.mtkachev.stomp.server.persistence.{StorePersisterWorker, InMemoryStore, Persister}
 
 /**
  * User: mick
@@ -128,7 +128,7 @@ class DestinationSpecification extends Specification {
     val subscriber: MockSubscriber = new MockSubscriber(dm, transportCtx)
     val subscription = Subscription("/foo/bar", subscriber, acknowledge = true, Some("foo"))
 
-    val destination: Destination = new Destination("foo", 1024, new InMemoryPersister)
+    val destination: Destination = new Destination("foo", 1024, new Persister(new StorePersisterWorker(new InMemoryStore)))
 
     def around[T : AsResult](t: =>T) = {
       issues(

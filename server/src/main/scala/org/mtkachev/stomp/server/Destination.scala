@@ -3,7 +3,7 @@ package org.mtkachev.stomp.server
 import actors.Actor
 import org.mtkachev.stomp.server.Destination._
 import scala.collection.immutable.{HashSet, Queue, Iterable}
-import org.mtkachev.stomp.server.persistence.{InMemoryPersister, Persister}
+import org.mtkachev.stomp.server.persistence.{StorePersisterWorker, InMemoryStore, Persister}
 import org.mtkachev.stomp.server.persistence.Persister.{Remove, Load, StoreOne, StoreList}
 import com.typesafe.scalalogging.slf4j.StrictLogging
 
@@ -185,5 +185,6 @@ object Destination {
 }
 
 class SimpleDestinationFactory(queueSize: Int) extends Function1[String, Destination] {
-  override def apply(name: String): Destination = new Destination(name, queueSize, new InMemoryPersister)
+  override def apply(name: String): Destination =
+    new Destination(name, queueSize, new Persister(new StorePersisterWorker(new InMemoryStore)))
 }

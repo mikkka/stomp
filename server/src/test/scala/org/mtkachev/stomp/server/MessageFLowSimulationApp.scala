@@ -7,6 +7,7 @@ import java.util.concurrent.{LinkedBlockingQueue, CountDownLatch}
 import org.mtkachev.stomp.server.Subscriber.{Stop => SubscriberStop, FrameMsg}
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.util.UUID
+import org.mtkachev.stomp.server.persistence.{BackgroundThreadPersisterWorker, StorePersisterWorker, InMemoryStore, Persister}
 
 /**
  * User: mick
@@ -34,7 +35,18 @@ object MessageFLowSimulationApp extends App with StrictLogging {
 
   val subscriberSleep = ((1.0 * (messageSourceSleepMin + messageSourceSleepMax) / 2) * subscriberCount).toInt
 
-  val dm = new DestinationManager(new SimpleDestinationFactory(256))
+  val dm = new DestinationManager(destName =>
+    new Destination(destName, 256,
+      new Persister(
+        new BackgroundThreadPersisterWorker(
+          new StorePersisterWorker(new InMemoryStore)))))
+/*
+  val dm = new DestinationManager(destName =>
+    new Destination(destName, 256,
+      new Persister(new StorePersisterWorker(new InMemoryStore))))
+*/
+
+
   dm.start()
 
   val messageProducer = new MessageProducer(dm, messageSourceSleepMin, messageSourceSleepMax,

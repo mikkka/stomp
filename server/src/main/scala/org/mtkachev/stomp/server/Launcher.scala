@@ -9,8 +9,8 @@ import nio.NioEventLoopGroup
 import socket.nio.NioServerSocketChannel
 import socket.SocketChannel
 import com.typesafe.config.ConfigFactory
-import org.mtkachev.stomp.server.persistence.InMemoryPersister
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import org.mtkachev.stomp.server.persistence.{StorePersisterWorker, InMemoryStore, Persister}
 
 
 object Launcher extends App with StrictLogging {
@@ -53,6 +53,6 @@ object Launcher extends App with StrictLogging {
 
   def destionationFactory(name: String): Destination = {
     val queueSize = if (config.hasPath(s"queue.$name.size")) config.getInt(s"queue.$name.size") else queueDefaultSize
-    new Destination(name, queueSize, new InMemoryPersister)
+    new Destination(name, queueSize, new Persister(new StorePersisterWorker(new InMemoryStore)))
   }
 }
