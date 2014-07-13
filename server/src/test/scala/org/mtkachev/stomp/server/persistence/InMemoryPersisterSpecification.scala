@@ -29,8 +29,8 @@ class InMemoryPersisterSpecification extends Specification with ThrownMessages {
 
       store.view.size must eventually(10, 1 second) (be_==(7))
       val storeView = store.view.toList.map {
-        case x: InMemoryStore.In => (x.id, x.body.toSeq)
-        case x: InMemoryStore.Out => x.id
+        case x: In => (x.id, x.body.toSeq)
+        case x: Out => x.id
       }
       storeView must_== List(
         ("in1", "q".getBytes.toSeq),
