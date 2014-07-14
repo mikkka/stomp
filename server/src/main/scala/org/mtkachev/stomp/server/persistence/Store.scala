@@ -61,13 +61,13 @@ class InMemoryStore extends Store {
 
   def store(msg: Envelope, fail: Boolean, move: Boolean) {
     if (!move)
-      store = store :+ In(msg.id, msg.body)
+      store = store :+ In(msg.id, msg.body.toArray)
   }
 
 
   def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
     if (!move)
-      store = store ++ msgList.map(msg => In(msg.id, msg.body))
+      store = store ++ msgList.map(msg => In(msg.id, msg.body.toArray))
   }
 
   def remove(id: Traversable[String]) {
@@ -94,7 +94,7 @@ class SimpleJournalFsStore(file: File) extends Store {
       case x: In => 1
     }
     val serializedArray = rec.pickle.value
-    val length = serializedArray.length + 1
+    val length = serializedArray.length
     val lengthBytes = java.nio.ByteBuffer.allocate(4).putInt(length).array()
     val bytesToWrite = (lengthBytes :+ flag) ++ serializedArray
     fout.write(bytesToWrite)
@@ -105,7 +105,11 @@ class SimpleJournalFsStore(file: File) extends Store {
     val lengthAndFlagBytes = new Array[Byte](5)
     val headerBytesRead = fin.read(lengthAndFlagBytes)
     if (headerBytesRead == 5) {
-      val length = java.nio.ByteBuffer.allocate(4).put(lengthAndFlagBytes, 0, 4).getInt
+      val lengthBuf = java.nio.ByteBuffer.
+        allocate(4).
+        put(lengthAndFlagBytes, 0, 4)
+      lengthBuf.flip()
+      val length = lengthBuf.getInt()
       val flag = lengthAndFlagBytes(4)
       val serializedArray = new Array[Byte](length)
       val bodyBytesRead = fin.read(serializedArray)
@@ -119,7 +123,7 @@ class SimpleJournalFsStore(file: File) extends Store {
   }
 
   override def store(msg: Envelope, fail: Boolean, move: Boolean) {
-    val bytesWrote = write(In(msg.id, msg.body))
+    val bytesWrote = write(In(msg.id, msg.body.toArray))
     if (move) {
       fin.skip(bytesWrote)
     }
@@ -139,9 +143,12 @@ class SimpleJournalFsStore(file: File) extends Store {
       if (counter == 0) acc
       else {
         read() match {
-          case Some(x: In) => loadIter(counter - 1, acc :+ x)
-          case Some(x: Out) => loadIter(counter, acc)
-          case None => acc
+          case Some(x: In) =>
+            loadIter(counter - 1, acc :+ x)
+          case Some(x: Out) =>
+            loadIter(counter, acc)
+          case None =>
+            acc
         }
       }
 

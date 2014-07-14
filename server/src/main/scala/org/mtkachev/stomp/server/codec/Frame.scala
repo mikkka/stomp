@@ -10,14 +10,14 @@ abstract class Frame()
 abstract class OutFrame() extends Frame()
 
 case class Connected(sessionId: String) extends OutFrame()
-case class Message(destination: String, messageId: String, contentLength: Int, body: Array[Byte]) extends OutFrame()
+case class Message(destination: String, messageId: String, contentLength: Int, body: Seq[Byte]) extends OutFrame()
 case class Receipt(receiptId: String) extends OutFrame()
 
 
 
 abstract sealed class InFrame() extends Frame()
 
-case class ErrorIn(messageType: String, body: Array[Byte], headers: Map[String,String]) extends InFrame()
+case class ErrorIn(messageType: String, body: Seq[Byte], headers: Map[String,String]) extends InFrame()
 case class Connect(login: String, password: String) extends InFrame()
 
 trait ConnectedStateFrame {

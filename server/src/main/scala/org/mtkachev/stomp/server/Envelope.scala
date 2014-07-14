@@ -7,8 +7,8 @@ import java.util.UUID
  * Date: 28.03.13
  * Time: 18:31
  */
-case class Envelope(id: String, contentLength: Int, body: Array[Byte]) {
-  override def toString = s"Envelope($id,$contentLength,${new String(body)}})"
+case class Envelope(id: String, contentLength: Int, body: Seq[Byte]) {
+  override def toString = s"Envelope($id,$contentLength,${new String(body.toArray)}})"
 }
 
 object Envelope {

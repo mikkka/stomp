@@ -27,7 +27,7 @@ class StompEncoder extends MessageToMessageEncoder[AnyRef] {
             append("destination: ").append(f.destination).append("\n").
             append("message-id: ").append(f.messageId).append("\n").
             append("\n")
-          copiedBuffer(Array.concat(sb.toString().getBytes, f.body, Array[Byte](0)))
+          copiedBuffer(Array.concat(sb.toString().getBytes, f.body.toArray, Array[Byte](0)))
 
         case f: Receipt =>
           sb.append("RECEIPT\n").

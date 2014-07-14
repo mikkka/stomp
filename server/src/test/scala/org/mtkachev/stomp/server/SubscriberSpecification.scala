@@ -127,6 +127,7 @@ class SubscriberSpecification extends Specification {
       val content1 = "1234567890_1".getBytes
       val content2 = "2345678901_1".getBytes
       val content3 = "2345678901_1".getBytes
+      val content3seq = content3.toSeq
 
       subscriber ! FrameMsg(Subscribe(subscription.id, subscription.expression, subscription.acknowledge, None))
       subscriber ! FrameMsg(Begin("tx1", None))
@@ -170,7 +171,7 @@ class SubscriberSpecification extends Specification {
 
       dm.messages.size must eventually(10, 100 millis)(be_==(2))
       dm.messages(0) must_== DestinationManager.Subscribe(subscription)
-      dm.messages(1) must beLike {case DestinationManager.Dispatch("foo/baz", Envelope(_, 10, `content3`)) => ok}
+      dm.messages(1) must beLike {case DestinationManager.Dispatch("foo/baz", Envelope(_, 10, `content3seq`)) => ok}
 
       subscriber.pendingAcksMap.size must_== 0
 
