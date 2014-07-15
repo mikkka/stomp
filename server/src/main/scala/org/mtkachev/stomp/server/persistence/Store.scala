@@ -79,6 +79,10 @@ class InMemoryStore extends Store {
   def shutdown() {}
 }
 
+/**
+ * works only for infinite destination (i.e. no paging ever!)
+ * @param file
+ */
 class SimpleJournalFsStore(file: File) extends Store {
 
   import scala.pickling._
@@ -123,10 +127,7 @@ class SimpleJournalFsStore(file: File) extends Store {
   }
 
   override def store(msg: Envelope, fail: Boolean, move: Boolean) {
-    val bytesWrote = write(In(msg.id, msg.body.toArray))
-    if (move) {
-      fin.skip(bytesWrote)
-    }
+    write(In(msg.id, msg.body.toArray))
   }
 
   override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
