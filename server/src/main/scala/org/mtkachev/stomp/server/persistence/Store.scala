@@ -2,8 +2,6 @@ package org.mtkachev.stomp.server.persistence
 
 import org.mtkachev.stomp.server.Envelope
 import scala.annotation.tailrec
-import java.io.File
-import scala.collection.mutable
 
 /**
  * User: mick
