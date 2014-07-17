@@ -18,22 +18,32 @@ import scala.util.Random
 class JournalFsStoreWithCheckpointsSpecification extends Specification with ThrownMessages {
   "fs store" should {
     "journal with checkpoints should store, create checkpoints and reinit after restart" in new WithFileSpecScope {
-      val iterationsCount = 10000
+      val iterationsCount = 100000
       val store1 = FSStore.journalFsStoreWithCheckpoints(tmpStore, 349)
       store1.init()
 
       var lastAddId = 0
-      val lastRemoveId = 0
+      var lastRemoveId = 0
       val random = new Random()
-      for(i <- 1 to iterationsCount) {
+      for (i <- 1 to iterationsCount) {
         val bytes = random.nextString(random.nextInt(256) + 1).getBytes
         store1.store(new Envelope(lastAddId.toString, bytes.length, bytes), fail = false, move = true)
+
+        if (lastAddId > lastRemoveId) {
+          val removesCount = random.nextInt(lastAddId - lastRemoveId)
+          if (removesCount > 0) {
+            val removeIds = (lastRemoveId to (lastRemoveId + removesCount)).map(_.toString)
+            store1.remove(removeIds)
+            lastRemoveId = lastRemoveId + removeIds.size
+          }
+        }
+
         lastAddId = lastAddId + 1
       }
       store1.shutdown()
 
       val store2 = FSStore.journalFsStoreWithCheckpoints(tmpStore, 349)
-      store2.init().size should_== 10000
+      store2.init().size should_== (lastAddId - lastRemoveId)
     }
   }
 
@@ -56,4 +66,5 @@ class JournalFsStoreWithCheckpointsSpecification extends Specification with Thro
       tmpStore.delete()
     }
   }
+
 }
