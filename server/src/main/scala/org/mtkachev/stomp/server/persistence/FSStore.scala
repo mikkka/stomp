@@ -140,11 +140,12 @@ object FSStore {
       if (workdir.isFile) {
         throw new IllegalArgumentException("workdir is file! directory needed")
       } else if (workdir.isDirectory) {
-        val checkpointFile = workdir.listFiles().filter(_.getName.endsWith(".checkpoint")).last
-        val journalFiles = workdir.listFiles().filter(_.getName.endsWith(".journal"))
+        val checkpointFile = lastChechpointFile
+        val journalFiles = listJournalFiles
 
         val messages = scan(checkpointFile, journalFiles)
         writeCheckpoint(messages, journalFiles)
+        journalStore = new SimpleJournalFsStore(createJournalFile)
         messages.map(entry => Envelope(entry._1, entry._2.size, entry._2)).toVector
       } else {
         workdir.mkdirs()
@@ -152,7 +153,7 @@ object FSStore {
       }
     }
 
-    def writeCheckpoint(content: mutable.LinkedHashMap[String, Array[Byte]], journalToDel: Seq[File]) {
+    private def writeCheckpoint(content: mutable.LinkedHashMap[String, Array[Byte]], journalToDel: Seq[File]) {
       val checkpoint = createCheckpointFile
       val checkpointStore = new SimpleJournalFsStore(checkpoint)
       content.foreach(ent => checkpointStore.write(In(ent._1, ent._2)))
@@ -166,12 +167,33 @@ object FSStore {
       journalToDel.foreach(_.delete())
     }
 
-    def checkFiles() {
+    private def lastChechpointFile = {
+      val checkpoints = workdir.listFiles().filter(_.getName.endsWith(".checkpoint")).sortBy(_.getName)
+      if (checkpoints.isEmpty) None
+      else Some(checkpoints.last)
+    }
+
+    private def listJournalFiles = workdir.listFiles().filter(_.getName.endsWith(".journal")).sortBy(_.getName)
+
+    private def createCheckpointFile = {
+      val newFile = new File(workdir, System.currentTimeMillis() + ".checkpoint")
+      newFile.createNewFile()
+      newFile
+    }
+
+    private def createJournalFile = {
+      val newFile = new File(workdir, System.currentTimeMillis() + ".journal")
+      newFile.createNewFile()
+      newFile
+    }
+
+    private def checkFiles() {
       lock synchronized {
-        if (journalSize > journalChunkSize) {
-          val checkpointFile = workdir.listFiles().filter(_.getName.endsWith(".checkpoint")).last
-          val journalFiles = workdir.listFiles().filter(_.getName.endsWith(".journal"))
+        if (journalSize >= journalChunkSize) {
+          val checkpointFile = lastChechpointFile
+          val journalFiles = listJournalFiles
           journalStore = new SimpleJournalFsStore(createJournalFile)
+          journalSize = 0
 
           //TODO: do this in background thread
           writeCheckpoint(scan(checkpointFile, journalFiles), journalFiles)
@@ -179,21 +201,13 @@ object FSStore {
       }
     }
 
-    def createCheckpointFile = {
-      val newFile = new File(workdir, System.currentTimeMillis() + ".checkpoint")
-      newFile.createNewFile()
-      newFile
-    }
-
-    def createJournalFile = {
-      val newFile = new File(workdir, System.currentTimeMillis() + ".journal")
-      newFile.createNewFile()
-      newFile
-    }
-
-    def scan(checkpoint: File, journals: Seq[File]): mutable.LinkedHashMap[String, Array[Byte]] = {
-      val checkpointStore = new SimpleJournalFsStore(checkpoint)
-      val checkpointData = scan(checkpointStore, mutable.LinkedHashMap.empty[String, Array[Byte]])
+    private def scan(checkpoint: Option[File], journals: Seq[File]): mutable.LinkedHashMap[String, Array[Byte]] = {
+      val checkpointData =
+        if (checkpoint.isEmpty) mutable.LinkedHashMap.empty[String, Array[Byte]]
+        else {
+          val checkpointStore = new SimpleJournalFsStore(checkpoint.get)
+          scan(checkpointStore, mutable.LinkedHashMap.empty[String, Array[Byte]])
+        }
       journals.foldLeft(checkpointData) { (map, journal) =>
         val store = new SimpleJournalFsStore(journal)
         scan(store, map)
@@ -214,7 +228,7 @@ object FSStore {
     }
 
 
-    override def shutdown(): Unit = ???
+    override def shutdown(): Unit = journalStore.shutdown()
   }
 
 
@@ -223,4 +237,11 @@ object FSStore {
    * @param file
    */
   def simpleJournalFsStore(file: File): Store = new SimpleJournalFsStore(file)
+
+  /**
+   * works only for infinite destination (i.e. no paging ever!)
+   * @param file
+   */
+  def journalFsStoreWithCheckpoints(file: File, journalChunkSize: Int): Store =
+    new JournalFsStoreWithCheckpoints(file, journalChunkSize)
 }
