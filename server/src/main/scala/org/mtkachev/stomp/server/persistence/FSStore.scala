@@ -10,6 +10,7 @@ import scala.collection.mutable
  * Time: 18:56
  */
 object FSStore {
+
   import scala.pickling._
   import binary._
   import java.io._
@@ -65,12 +66,12 @@ object FSStore {
     override val fout = new FileOutputStream(file, true)
 
     override def store(msg: Envelope, fail: Boolean, move: Boolean) {
-      if(!move) throw new IllegalStateException("can't do paging op!")
+      if (!move) throw new IllegalStateException("can't do paging op!")
       else write(In(msg.id, msg.body.toArray))
     }
 
     override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
-      if(!move) throw new IllegalStateException("can't do paging op!")
+      if (!move) throw new IllegalStateException("can't do paging op!")
       else for (msg <- msgList) store(msg, fail, move)
     }
 
@@ -102,6 +103,120 @@ object FSStore {
       fin.close()
     }
   }
+
+  private class JournalFsStoreWithCheckpoints(workdir: File, journalChunkSize: Int) extends Store {
+    val lock = new String("opLock")
+    /**
+     * <timestamp>.journal
+     * <timestamp>.checkpoint
+     *
+     */
+    var journalStore: SimpleJournalFsStore = null
+    var journalSize = 0
+
+    override def load(quantity: Int): Vector[Envelope] = throw new IllegalStateException("can't do paging op!")
+
+    override def store(msg: Envelope, fail: Boolean, move: Boolean) {
+      checkFiles
+      lock synchronized {
+        journalStore.store(msg, fail = fail, move = move)
+        journalSize = journalSize + 1
+      }
+    }
+
+    override def remove(id: Traversable[String]) {
+      checkFiles
+      lock synchronized {
+        journalStore.remove(id)
+        journalSize = journalSize + 1
+      }
+    }
+
+    override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
+      msgList.foreach(store(_, fail, move))
+    }
+
+    override def init(): Vector[Envelope] = {
+      if (workdir.isFile) {
+        throw new IllegalArgumentException("workdir is file! directory needed")
+      } else if (workdir.isDirectory) {
+        val checkpointFile = workdir.listFiles().filter(_.getName.endsWith(".checkpoint")).last
+        val journalFiles = workdir.listFiles().filter(_.getName.endsWith(".journal"))
+
+        val messages = scan(checkpointFile, journalFiles)
+        writeCheckpoint(messages, journalFiles)
+        messages.map(entry => Envelope(entry._1, entry._2.size, entry._2)).toVector
+      } else {
+        workdir.mkdirs()
+        Vector.empty
+      }
+    }
+
+    def writeCheckpoint(content: mutable.LinkedHashMap[String, Array[Byte]], journalToDel: Seq[File]) {
+      val checkpoint = createCheckpointFile
+      val checkpointStore = new SimpleJournalFsStore(checkpoint)
+      content.foreach(ent => checkpointStore.write(In(ent._1, ent._2)))
+      checkpointStore.shutdown()
+
+      //burn junk
+      //burn old checkpoints
+      workdir.listFiles().
+        filter(f => f.getName.endsWith(".checkpoint") && f.getName != checkpoint.getName).foreach(_.delete())
+      //burn journals
+      journalToDel.foreach(_.delete())
+    }
+
+    def checkFiles() {
+      lock synchronized {
+        if (journalSize > journalChunkSize) {
+          val checkpointFile = workdir.listFiles().filter(_.getName.endsWith(".checkpoint")).last
+          val journalFiles = workdir.listFiles().filter(_.getName.endsWith(".journal"))
+          journalStore = new SimpleJournalFsStore(createJournalFile)
+
+          //TODO: do this in background thread
+          writeCheckpoint(scan(checkpointFile, journalFiles), journalFiles)
+        }
+      }
+    }
+
+    def createCheckpointFile = {
+      val newFile = new File(workdir, System.currentTimeMillis() + ".checkpoint")
+      newFile.createNewFile()
+      newFile
+    }
+
+    def createJournalFile = {
+      val newFile = new File(workdir, System.currentTimeMillis() + ".journal")
+      newFile.createNewFile()
+      newFile
+    }
+
+    def scan(checkpoint: File, journals: Seq[File]): mutable.LinkedHashMap[String, Array[Byte]] = {
+      val checkpointStore = new SimpleJournalFsStore(checkpoint)
+      val checkpointData = scan(checkpointStore, mutable.LinkedHashMap.empty[String, Array[Byte]])
+      journals.foldLeft(checkpointData) { (map, journal) =>
+        val store = new SimpleJournalFsStore(journal)
+        scan(store, map)
+      }
+    }
+
+    @tailrec
+    private def scan(store: SimpleJournalFsStore,
+                     inMap: mutable.LinkedHashMap[String, Array[Byte]]): mutable.LinkedHashMap[String, Array[Byte]] = {
+      store.read() match {
+        case Some(x: In) =>
+          scan(store, inMap += (x.id -> x.body))
+        case Some(x: Out) =>
+          scan(store, inMap -= x.id)
+        case None =>
+          inMap
+      }
+    }
+
+
+    override def shutdown(): Unit = ???
+  }
+
 
   /**
    * works only for infinite destination (i.e. no paging ever!)
