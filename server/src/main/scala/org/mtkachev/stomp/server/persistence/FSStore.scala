@@ -105,7 +105,43 @@ object FSStore {
   }
 
   private class JournalFsStoreWithCheckpoints(workdir: File, journalChunkSize: Int) extends Store {
-    val lock = new String("opLock")
+    class BackgroundCheckpointWorker extends Runnable {
+      var submitLock = new String("submitLock")
+      var nextTask: (Option[File], Seq[File]) = null
+      @volatile var isRunning = false
+
+      def submitNextTask(checkpoint: Option[File], journals: Seq[File]) {
+        submitLock synchronized {
+          nextTask = (checkpoint, journals)
+          submitLock.notifyAll()
+        }
+      }
+
+      override def run() {
+        while (isRunning) {
+          var task: (Option[File], Seq[File]) = null
+          submitLock synchronized {
+            while (task == null && isRunning) {
+              task = nextTask
+              if (task == null) submitLock.wait()
+            }
+            nextTask = null
+          }
+          if (task != null) writeCheckpoint(scan(task._1, task._2), task._2)
+        }
+      }
+
+      def shutdown() {
+        isRunning = false
+        submitLock synchronized {
+          submitLock.notifyAll()
+        }
+      }
+    }
+
+    val checkpointWorker = new BackgroundCheckpointWorker
+    val checkpointWorkerThread = new Thread(checkpointWorker)
+    checkpointWorkerThread.start()
     /**
      * <timestamp>.journal
      * <timestamp>.checkpoint
@@ -117,19 +153,15 @@ object FSStore {
     override def load(quantity: Int): Vector[Envelope] = throw new IllegalStateException("can't do paging op!")
 
     override def store(msg: Envelope, fail: Boolean, move: Boolean) {
-      checkFiles
-      lock synchronized {
-        journalStore.store(msg, fail = fail, move = move)
-        journalSize = journalSize + 1
-      }
+      checkFiles()
+      journalStore.store(msg, fail = fail, move = move)
+      journalSize = journalSize + 1
     }
 
     override def remove(id: Traversable[String]) {
-      checkFiles
-      lock synchronized {
-        journalStore.remove(id)
-        journalSize = journalSize + 1
-      }
+      checkFiles()
+      journalStore.remove(id)
+      journalSize = journalSize + 1
     }
 
     override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
@@ -188,16 +220,14 @@ object FSStore {
     }
 
     private def checkFiles() {
-      lock synchronized {
-        if (journalSize >= journalChunkSize) {
-          val checkpointFile = lastChechpointFile
-          val journalFiles = listJournalFiles
-          journalStore = new SimpleJournalFsStore(createJournalFile)
-          journalSize = 0
+      if (journalSize >= journalChunkSize) {
+        val checkpointFile = lastChechpointFile
+        val journalFiles = listJournalFiles
 
-          //TODO: do this in background thread
-          writeCheckpoint(scan(checkpointFile, journalFiles), journalFiles)
-        }
+        journalStore = new SimpleJournalFsStore(createJournalFile)
+        journalSize = 0
+
+        checkpointWorker.submitNextTask(checkpointFile, journalFiles)
       }
     }
 
@@ -228,7 +258,10 @@ object FSStore {
     }
 
 
-    override def shutdown(): Unit = journalStore.shutdown()
+    override def shutdown() {
+      journalStore.shutdown()
+      checkpointWorker.shutdown()
+    }
   }
 
 

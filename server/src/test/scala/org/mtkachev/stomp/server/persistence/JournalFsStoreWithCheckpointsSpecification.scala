@@ -44,6 +44,8 @@ class JournalFsStoreWithCheckpointsSpecification extends Specification with Thro
 
       val store2 = FSStore.journalFsStoreWithCheckpoints(tmpStore, 349)
       store2.init().size should_== (lastAddId - lastRemoveId)
+
+      store2.shutdown()
     }
   }
 
