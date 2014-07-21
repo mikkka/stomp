@@ -15,10 +15,37 @@ object FSStore {
   import binary._
   import java.io._
 
+  private trait Serializer[-T] {
+    def serialize(t: T): (Array[Byte], Byte)
+  }
+
+  private trait Deserializer[+T] {
+    def deserialize(body: Array[Byte], flag: Byte):Option[T]
+  }
+
+  private class InOutSerializer extends Serializer[Record] {
+    override def serialize(rec: Record): (Array[Byte], Byte) = {
+      val flag: Byte = rec match {
+        case x: Out => 0
+        case x: In => 1
+      }
+      val serializedArray = rec.pickle.value
+      (serializedArray, flag)
+    }
+  }
+
+  private class InOutDeserializer extends Deserializer[Record] {
+    override def deserialize(body: Array[Byte], flag: Byte): Option[Record] = flag match {
+      case 0 => Some(body.unpickle[Out])
+      case 1 => Some(body.unpickle[In])
+      case _ => None
+    }
+  }
+
   private trait Reader {
     val fin: FileInputStream
 
-    def read(): Option[Record] = {
+    def read[T]()(implicit s: Deserializer[T]): Option[T] = {
       val lengthAndFlagBytes = new Array[Byte](5)
       val headerBytesRead = fin.read(lengthAndFlagBytes)
       if (headerBytesRead == 5) {
@@ -30,12 +57,8 @@ object FSStore {
         val flag = lengthAndFlagBytes(4)
         val serializedArray = new Array[Byte](length)
         val bodyBytesRead = fin.read(serializedArray)
-        if (bodyBytesRead == length) {
-          flag match {
-            case 0 => Some(serializedArray.unpickle[Out])
-            case 1 => Some(serializedArray.unpickle[In])
-          }
-        } else None
+        if (bodyBytesRead == length) s.deserialize(serializedArray, flag)
+        else None
       } else None
     }
   }
@@ -43,12 +66,8 @@ object FSStore {
   private trait Writer {
     val fout: FileOutputStream
 
-    def write(rec: Record): Int = {
-      val flag: Byte = rec match {
-        case x: Out => 0
-        case x: In => 1
-      }
-      val serializedArray = rec.pickle.value
+    def write[T](rec: T)(implicit s: Serializer[T]): Int = {
+      val (serializedArray, flag) = s.serialize(rec)
       val length = serializedArray.length
       val lengthBytes = java.nio.ByteBuffer.allocate(4).putInt(length).array()
       val bytesToWrite = (lengthBytes :+ flag) ++ serializedArray
@@ -64,6 +83,9 @@ object FSStore {
   private class SimpleJournalFsStore(file: File) extends Store with Reader with Writer {
     override val fin = new FileInputStream(file)
     override val fout = new FileOutputStream(file, true)
+
+    implicit val serializer = new InOutSerializer
+    implicit val deserializer = new InOutDeserializer
 
     override def store(msg: Envelope, fail: Boolean, move: Boolean) {
       if (!move) throw new IllegalStateException("can't do paging op!")
@@ -105,6 +127,9 @@ object FSStore {
   }
 
   private class JournalFsStoreWithCheckpoints(workdir: File, journalChunkSize: Int) extends Store {
+    implicit val serializer = new InOutSerializer
+    implicit val deserializer = new InOutDeserializer
+
     class BackgroundCheckpointWorker extends Runnable {
       var submitLock = new String("submitLock")
       var nextTask: (Option[File], Seq[File]) = null
@@ -264,6 +289,15 @@ object FSStore {
     }
   }
 
+
+/*
+  private class AheadLogFsStore(workdir: File, aheadLogChunkSize: Int) extends Store {
+
+
+    override def shutdown() {
+    }
+  }
+*/
 
   /**
    * works only for infinite destination (i.e. no paging ever!)
