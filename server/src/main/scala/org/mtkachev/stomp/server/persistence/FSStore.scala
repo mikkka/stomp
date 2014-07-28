@@ -178,19 +178,21 @@ object FSStore {
     override def load(quantity: Int): Vector[Envelope] = throw new IllegalStateException("can't do paging op!")
 
     override def store(msg: Envelope, fail: Boolean, move: Boolean) {
+      if (!move) throw new IllegalStateException("can't do paging op!")
       checkFiles()
       journalStore.store(msg, fail = fail, move = move)
       journalSize = journalSize + 1
+    }
+
+    override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
+      if (!move) throw new IllegalStateException("can't do paging op!")
+      msgList.foreach(store(_, fail, move))
     }
 
     override def remove(id: Traversable[String]) {
       checkFiles()
       journalStore.remove(id)
       journalSize = journalSize + 1
-    }
-
-    override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
-      msgList.foreach(store(_, fail, move))
     }
 
     override def init(): Vector[Envelope] = {
@@ -290,14 +292,12 @@ object FSStore {
   }
 
 
-/*
   private class AheadLogFsStore(workdir: File, aheadLogChunkSize: Int) extends Store {
 
 
     override def shutdown() {
     }
   }
-*/
 
   /**
    * works only for infinite destination (i.e. no paging ever!)
