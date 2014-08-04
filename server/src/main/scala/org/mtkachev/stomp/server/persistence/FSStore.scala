@@ -295,7 +295,7 @@ object FSStore {
     }
   }
 
-  private class AheadLogFsStore(workdir: File, aheadLogChunkSize: Int) extends Store {
+  private class AheadLogFsStore(workdir: File, aheadLogChunkBytesSize: Int) extends Store {
     case class LoadBookmark(filename: String, position: Int)
     //new store
     //failed store
@@ -311,7 +311,7 @@ object FSStore {
       private var _fin: FileInputStream = null
       override def fin: FileInputStream = _fin
 
-      var currentChunkWritesQuantity = 0
+      var currentBytesWrite = 0
       var currentBytesRead = 0
 
       checkWriteRoll()
@@ -324,8 +324,7 @@ object FSStore {
 
       def write(rec: In, fail: Boolean) {
         checkWriteRoll()
-        write(rec)
-        currentChunkWritesQuantity = currentChunkWritesQuantity + 1
+        currentBytesWrite = currentBytesWrite + write(rec)
       }
       /**
        * read data from chunk files. if chunk is exhausted - delete it!
@@ -362,7 +361,7 @@ object FSStore {
       }
 
       private def checkWriteRoll() {
-        if(fout == null || currentChunkWritesQuantity >= aheadLogChunkSize) {
+        if(fout == null || currentBytesWrite >= aheadLogChunkBytesSize) {
           closeFout()
           val newChunk = createChunkFile()
           _fout = new FileOutputStream(newChunk)
@@ -407,27 +406,23 @@ object FSStore {
           currentBytesRead = 0
         }
       }
+
+      def shutdown() {
+        closeFout()
+        closeFin()
+      }
     }
 
-    var newbieReader: Reader = null
-    var newbieReaderFile: File = null
 
-    var newbieWriter: Writer = null
-    var newbieWriterFile: File = null
-    var newbieSize = 0
+    override def store(msg: Envelope, fail: Boolean, move: Boolean) {
+      if (move) throw new IllegalStateException("can't do paging op!")
+      ???
+    }
 
-    var failedReader: Reader = null
-    var failedReaderFile: File = null
-
-    var failedWriter: Writer = null
-    var failedWriterFile: File = null
-    var failedSize = 0
-
-    var stateWriter: Writer = null
-
-    override def store(msg: Envelope, fail: Boolean, move: Boolean): Unit = ???
-
-    override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean): Unit = ???
+    override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
+      if (move) throw new IllegalStateException("can't do paging op!")
+      ???
+    }
 
     override def remove(id: Traversable[String]): Unit = ???
 
@@ -440,11 +435,6 @@ object FSStore {
     }
 
     override def shutdown() {
-      newbieReader.fin.close()
-      newbieWriter.fout.close()
-      failedReader.fin.close()
-      failedWriter.fout.close()
-      stateWriter.fout.close()
     }
 
     private def newbieFiles() = workdir.listFiles().filter(_.getName.endsWith(".newbie")).sortBy(_.getName)
