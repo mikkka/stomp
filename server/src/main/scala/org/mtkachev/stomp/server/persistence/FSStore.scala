@@ -296,11 +296,13 @@ object FSStore {
   }
 
   private class AheadLogFsStore(workdir: File, aheadLogChunkBytesSize: Int) extends Store {
-    case class LoadBookmark(filename: String, position: Int)
+    case class LoadBookmark(filename: String, position: Long)
     //new store
     //failed store
-    class ChunkedAheadLogReadWriter(ext: String, startReaderFileName: String,
+    class ChunkedAheadLogReadWriter(ext: String,
+                                    startReaderFileName: Option[String],
                                     startReaderShift: Int) extends Writer with Reader {
+
       implicit val serializer = new InOutSerializer
       implicit val deserializer = new InOutDeserializer
 
@@ -311,16 +313,29 @@ object FSStore {
       private var _fin: FileInputStream = null
       override def fin: FileInputStream = _fin
 
-      var currentBytesWrite = 0
-      var currentBytesRead = 0
+      var currentBytesWrite = 0L
+      var currentBytesRead = 0L
 
-      checkWriteRoll()
-      readRoll()
-
-      if(startReaderFileName != null && _currentFinFile.getName == startReaderFileName) {
-        _fin.skip(startReaderShift)
+      private def initWriter() {
+        val chunks = chunkFilesList()
+        if(!chunks.isEmpty) {
+          _fout = new FileOutputStream(chunks.last)
+          currentBytesWrite = chunks.last.length()
+        }
       }
 
+      private def initReader() {
+        startReaderFileName.foreach{name =>
+          if(_currentFinFile.getName == name) {
+            _fin.skip(startReaderShift)
+          }
+        }
+      }
+
+      initWriter()
+      checkWriteRoll()
+      readRoll()
+      initReader()
 
       def write(rec: In, fail: Boolean) {
         checkWriteRoll()
@@ -370,12 +385,14 @@ object FSStore {
       }
 
       private def readRoll() {
-        val chunks = workdir.listFiles().filter(_.getName.endsWith("." + ext)).sortBy(_.getName)
+        val chunks = chunkFilesList()
         if(!chunks.isEmpty) {
           _currentFinFile = chunks.head
           _fin = new FileInputStream(_currentFinFile)
         }
       }
+
+      def chunkFilesList() = workdir.listFiles().filter(_.getName.endsWith("." + ext)).sortBy(_.getName)
 
       private def createChunkFile() = {
         val newFile = new File(workdir, System.currentTimeMillis() + "." + ext)
