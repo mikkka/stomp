@@ -20,7 +20,7 @@ object FSStore {
   }
 
   private trait Deserializer[+T] {
-    def deserialize(body: Array[Byte], flag: Byte):Option[T]
+    def deserialize(body: Array[Byte], flag: Byte): Option[T]
   }
 
   private class InOutSerializer extends Serializer[Record] {
@@ -43,36 +43,41 @@ object FSStore {
   }
 
   private trait Reader {
-    val fin: FileInputStream
+    def fin: FileInputStream
 
-    def read[T]()(implicit s: Deserializer[T]): Option[T] = {
-      val lengthAndFlagBytes = new Array[Byte](5)
-      val headerBytesRead = fin.read(lengthAndFlagBytes)
-      if (headerBytesRead == 5) {
-        val lengthBuf = java.nio.ByteBuffer.
-          allocate(4).
-          put(lengthAndFlagBytes, 0, 4)
-        lengthBuf.flip()
-        val length = lengthBuf.getInt()
-        val flag = lengthAndFlagBytes(4)
-        val serializedArray = new Array[Byte](length)
-        val bodyBytesRead = fin.read(serializedArray)
-        if (bodyBytesRead == length) s.deserialize(serializedArray, flag)
-        else None
+    def read[T]()(implicit s: Deserializer[T]): Option[(T,Int)] = {
+      if (fin != null) {
+        val lengthAndFlagBytes = new Array[Byte](5)
+        val headerBytesRead = fin.read(lengthAndFlagBytes)
+        if (headerBytesRead == 5) {
+          val lengthBuf = java.nio.ByteBuffer.
+            allocate(4).
+            put(lengthAndFlagBytes, 0, 4)
+          lengthBuf.flip()
+          val length = lengthBuf.getInt()
+          val flag = lengthAndFlagBytes(4)
+          val serializedArray = new Array[Byte](length)
+          val bodyBytesRead = fin.read(serializedArray)
+          if (bodyBytesRead == length) s.deserialize(serializedArray, flag).map((_, 5 + length))
+          else None
+        } else None
       } else None
     }
+
   }
 
   private trait Writer {
-    val fout: FileOutputStream
+    def fout: FileOutputStream
 
     def write[T](rec: T)(implicit s: Serializer[T]): Int = {
-      val (serializedArray, flag) = s.serialize(rec)
-      val length = serializedArray.length
-      val lengthBytes = java.nio.ByteBuffer.allocate(4).putInt(length).array()
-      val bytesToWrite = (lengthBytes :+ flag) ++ serializedArray
-      fout.write(bytesToWrite)
-      bytesToWrite.length
+      if (fout != null) {
+        val (serializedArray, flag) = s.serialize(rec)
+        val length = serializedArray.length
+        val lengthBytes = java.nio.ByteBuffer.allocate(4).putInt(length).array()
+        val bytesToWrite = (lengthBytes :+ flag) ++ serializedArray
+        fout.write(bytesToWrite)
+        bytesToWrite.length
+      } else 0
     }
   }
 
@@ -107,9 +112,9 @@ object FSStore {
       @tailrec
       def loadIter(inMap: mutable.LinkedHashMap[String, Array[Byte]]): mutable.LinkedHashMap[String, Array[Byte]] = {
         read() match {
-          case Some(x: In) =>
+          case Some((x: In, _)) =>
             loadIter(inMap += (x.id -> x.body))
-          case Some(x: Out) =>
+          case Some((x: Out, _)) =>
             loadIter(inMap -= x.id)
           case None =>
             inMap
@@ -275,15 +280,14 @@ object FSStore {
     private def scan(store: SimpleJournalFsStore,
                      inMap: mutable.LinkedHashMap[String, Array[Byte]]): mutable.LinkedHashMap[String, Array[Byte]] = {
       store.read() match {
-        case Some(x: In) =>
+        case Some((x: In, _)) =>
           scan(store, inMap += (x.id -> x.body))
-        case Some(x: Out) =>
+        case Some((x: Out, _)) =>
           scan(store, inMap -= x.id)
         case None =>
           inMap
       }
     }
-
 
     override def shutdown() {
       journalStore.shutdown()
@@ -291,12 +295,161 @@ object FSStore {
     }
   }
 
-
   private class AheadLogFsStore(workdir: File, aheadLogChunkSize: Int) extends Store {
+    case class LoadBookmark(filename: String, position: Int)
+    //new store
+    //failed store
+    class ChunkedAheadLogReadWriter(ext: String, startReaderFileName: String,
+                                    startReaderShift: Int) extends Writer with Reader {
+      implicit val serializer = new InOutSerializer
+      implicit val deserializer = new InOutDeserializer
 
+      private var _fout: FileOutputStream = null
+      override def fout: FileOutputStream = _fout
+
+      private var _currentFinFile: File = null
+      private var _fin: FileInputStream = null
+      override def fin: FileInputStream = _fin
+
+      var currentChunkWritesQuantity = 0
+      var currentBytesRead = 0
+
+      checkWriteRoll()
+      readRoll()
+
+      if(startReaderFileName != null && _currentFinFile.getName == startReaderFileName) {
+        _fin.skip(startReaderShift)
+      }
+
+
+      def write(rec: In, fail: Boolean) {
+        checkWriteRoll()
+        write(rec)
+        currentChunkWritesQuantity = currentChunkWritesQuantity + 1
+      }
+      /**
+       * read data from chunk files. if chunk is exhausted - delete it!
+       *
+       * @param quantity - data quantity
+       * @return
+       *         loaded ins,
+       *         bookmark for future navigation if file still exists
+       */
+      def load(quantity: Int): (Vector[In], Option[LoadBookmark]) = {
+
+        @tailrec
+        def iter(acc: Vector[In], bytesRead: Int, rest: Int): (Vector[In], Int, Boolean) =
+        if(rest == 0) (acc, bytesRead, true)
+        else
+          read() match {
+            case Some((x: In, br)) =>
+              iter(acc :+ x, bytesRead + br, rest - 1)
+            case Some((x: Out, _)) =>
+              iter(acc, bytesRead, rest)
+            case None =>
+              (acc, bytesRead, false)
+          }
+
+        val (ins, bytesRead, fileComplete) = iter(Vector.empty, 0, quantity)
+        if(fileComplete) {
+          completeFin()
+          readRoll()
+          (ins, None)
+        } else {
+          currentBytesRead = currentBytesRead + bytesRead
+          (ins, Some(LoadBookmark(_currentFinFile.getName, currentBytesRead)))
+        }
+      }
+
+      private def checkWriteRoll() {
+        if(fout == null || currentChunkWritesQuantity >= aheadLogChunkSize) {
+          closeFout()
+          val newChunk = createChunkFile()
+          _fout = new FileOutputStream(newChunk)
+          if(_fin == null) readRoll()
+        }
+      }
+
+      private def readRoll() {
+        val chunks = workdir.listFiles().filter(_.getName.endsWith("." + ext)).sortBy(_.getName)
+        if(!chunks.isEmpty) {
+          _currentFinFile = chunks.head
+          _fin = new FileInputStream(_currentFinFile)
+        }
+      }
+
+      private def createChunkFile() = {
+        val newFile = new File(workdir, System.currentTimeMillis() + "." + ext)
+        newFile.createNewFile()
+        newFile
+      }
+
+      def closeFout() {
+        if(_fout != null) {
+          _fout.flush()
+          _fout.close()
+          _fout = null
+        }
+      }
+
+      def closeFin() {
+        if (_fin != null) {
+          _fin.close()
+        }
+      }
+
+      def completeFin() {
+        if(_fin != null) {
+          _fin.close()
+          _fin = null
+          _currentFinFile.delete()
+          _currentFinFile = null
+          currentBytesRead = 0
+        }
+      }
+    }
+
+    var newbieReader: Reader = null
+    var newbieReaderFile: File = null
+
+    var newbieWriter: Writer = null
+    var newbieWriterFile: File = null
+    var newbieSize = 0
+
+    var failedReader: Reader = null
+    var failedReaderFile: File = null
+
+    var failedWriter: Writer = null
+    var failedWriterFile: File = null
+    var failedSize = 0
+
+    var stateWriter: Writer = null
+
+    override def store(msg: Envelope, fail: Boolean, move: Boolean): Unit = ???
+
+    override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean): Unit = ???
+
+    override def remove(id: Traversable[String]): Unit = ???
+
+    override def load(quantity: Int): Vector[Envelope] = ???
+
+    override def init(): Vector[Envelope] = {
+      //delete failed files
+      failedFiles().foreach(_.delete())
+      ???
+    }
 
     override def shutdown() {
+      newbieReader.fin.close()
+      newbieWriter.fout.close()
+      failedReader.fin.close()
+      failedWriter.fout.close()
+      stateWriter.fout.close()
     }
+
+    private def newbieFiles() = workdir.listFiles().filter(_.getName.endsWith(".newbie")).sortBy(_.getName)
+
+    private def failedFiles() = workdir.listFiles().filter(_.getName.endsWith(".failed")).sortBy(_.getName)
   }
 
   /**
