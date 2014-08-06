@@ -299,9 +299,7 @@ object FSStore {
     case class LoadBookmark(filename: String, position: Long)
     //new store
     //failed store
-    class ChunkedAheadLogReadWriter(ext: String,
-                                    startReaderFileName: Option[String],
-                                    startReaderShift: Int) extends Writer with Reader {
+    private class ChunkedAheadLogReadWriter(ext: String, startReaderBookmark: Option[LoadBookmark]) extends Writer with Reader {
 
       implicit val serializer = new InOutSerializer
       implicit val deserializer = new InOutDeserializer
@@ -325,9 +323,9 @@ object FSStore {
       }
 
       private def initReader() {
-        startReaderFileName.foreach{name =>
-          if(_currentFinFile.getName == name) {
-            _fin.skip(startReaderShift)
+        startReaderBookmark.foreach{bookmark =>
+          if(_currentFinFile.getName == bookmark.filename) {
+            _fin.skip(bookmark.position)
           }
         }
       }
@@ -337,7 +335,7 @@ object FSStore {
       readRoll()
       initReader()
 
-      def write(rec: In, fail: Boolean) {
+      def writeIn(rec: In) {
         checkWriteRoll()
         currentBytesWrite = currentBytesWrite + write(rec)
       }
@@ -430,33 +428,85 @@ object FSStore {
       }
     }
 
+    private val loadsSerializer = new Serializer[LoadBookmark] with Deserializer[LoadBookmark] {
+      def serialize(x: LoadBookmark): (Array[Byte], Byte) = {
+        (x.pickle.value, 0)
+      }
+
+      def deserialize(body: Array[Byte], flag: Byte): Option[LoadBookmark] = {
+        Some(body.unpickle[LoadBookmark])
+      }
+    }
+
+    private val NEWBIE = ".newbie"
+    private val FAILED = ".failed"
+    private val LOADS_FILE = "loads.log"
+
+    private def cleanTrash() {
+      workdir.listFiles().filter(_.getName.endsWith(NEWBIE)).foreach(_.delete())
+      new File(LOADS_FILE).delete()
+    }
+
+    private def lastLoadBookmark(): Option[LoadBookmark] = {
+      implicit val deserializer = loadsSerializer
+      val loadsReader = new Reader {
+        override def fin: FileInputStream = new FileInputStream(LOADS_FILE)
+      }
+      def iter(prevRead: Option[LoadBookmark]): Option[LoadBookmark] = {
+        loadsReader.read() match {
+          case Some((b,pos)) => iter(Some(b))
+          case None => prevRead
+        }
+      }
+      iter(None)
+    }
+
+    cleanTrash()
+
+    private val newbieReadWriter = new ChunkedAheadLogReadWriter(NEWBIE, lastLoadBookmark())
+    private val failedReadWriter = new ChunkedAheadLogReadWriter(FAILED, None)
+    private val loadsWriter = new Writer {
+      override def fout: FileOutputStream = new FileOutputStream(LOADS_FILE)
+    }
 
     override def store(msg: Envelope, fail: Boolean, move: Boolean) {
-      if (move) throw new IllegalStateException("can't do paging op!")
-      ???
+      if (move) throw new IllegalStateException("should be move op!")
+
+      val in = In(msg.id, msg.body.toArray)
+      if (fail) failedReadWriter.writeIn(in)
+      else newbieReadWriter.writeIn(in)
     }
 
     override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
-      if (move) throw new IllegalStateException("can't do paging op!")
-      ???
+      if (move) throw new IllegalStateException("should be move op!")
+      msgList.foreach(store(_, fail, move))
     }
 
-    override def remove(id: Traversable[String]): Unit = ???
+    override def remove(id: Traversable[String]): Unit = throw new IllegalStateException("can't do remove op!")
 
-    override def load(quantity: Int): Vector[Envelope] = ???
+    override def load(quantity: Int): Vector[Envelope] = {
+      implicit val serializer = loadsSerializer
+      //first load from failed
+      //then load from newbie and save newbie bookmark
+      val (failed, _) = failedReadWriter.load(quantity)
+      val failedSize = failed.size
+      if (failedSize < quantity) {
+        val (newbie, nBookmarkOpt) = failedReadWriter.load(quantity)
+        nBookmarkOpt.foreach(loadsWriter.write(_))
+        (failed ++ newbie).map(in => Envelope(in.id, in.body.length, in.body))
+      } else failed.map(in => Envelope(in.id, in.body.length, in.body))
+    }
 
     override def init(): Vector[Envelope] = {
-      //delete failed files
-      failedFiles().foreach(_.delete())
-      ???
+      Vector.empty
     }
 
     override def shutdown() {
+      newbieReadWriter.shutdown()
+      failedReadWriter.shutdown()
+      loadsWriter.fout.flush()
+      loadsWriter.fout.close()
     }
-
-    private def newbieFiles() = workdir.listFiles().filter(_.getName.endsWith(".newbie")).sortBy(_.getName)
-
-    private def failedFiles() = workdir.listFiles().filter(_.getName.endsWith(".failed")).sortBy(_.getName)
   }
 
   /**
