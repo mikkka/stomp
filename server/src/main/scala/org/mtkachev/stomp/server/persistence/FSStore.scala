@@ -350,27 +350,38 @@ object FSStore {
       def load(quantity: Int): (Vector[In], Option[LoadBookmark]) = {
 
         @tailrec
-        def iter(acc: Vector[In], bytesRead: Int, rest: Int): (Vector[In], Int, Boolean) =
-        if(rest == 0) (acc, bytesRead, true)
-        else
-          read() match {
-            case Some((x: In, br)) =>
-              iter(acc :+ x, bytesRead + br, rest - 1)
-            case Some((x: Out, _)) =>
-              iter(acc, bytesRead, rest)
-            case None =>
-              (acc, bytesRead, false)
-          }
+        def readSingle(acc: Vector[In], bytesRead: Int, rest: Int): (Vector[In], Int, Boolean) =
+          if(rest == 0) (acc, bytesRead, false)
+          else
+            read() match {
+              case Some((x: In, br)) =>
+                readSingle(acc :+ x, bytesRead + br, rest - 1)
+              case Some((x: Out, _)) =>
+                readSingle(acc, bytesRead, rest)
+              case None =>
+                (acc, bytesRead, true)
+            }
 
-        val (ins, bytesRead, fileComplete) = iter(Vector.empty, 0, quantity)
-        if(fileComplete) {
-          completeFin()
-          readRoll()
-          (ins, None)
-        } else {
-          currentBytesRead = currentBytesRead + bytesRead
-          (ins, Some(LoadBookmark(_currentFinFile.getName, currentBytesRead)))
+        @tailrec
+        def rollingRead(acc: Vector[In]): (Vector[In], Option[LoadBookmark]) = {
+          println(s"$ext rolling read")
+          val (ins, bytesRead, fileComplete) = readSingle(acc, 0, quantity - acc.size)
+          if (fileComplete) {
+            completeFin()
+            if (!readRoll()) {
+              (ins, None)
+            } else {
+              rollingRead(ins)
+            }
+          } else {
+            currentBytesRead = currentBytesRead + bytesRead
+            (ins,
+              Some(
+                LoadBookmark(_currentFinFile.getName,
+                  currentBytesRead)))
+          }
         }
+        rollingRead(Vector.empty)
       }
 
       private def checkWriteRoll() {
@@ -378,16 +389,21 @@ object FSStore {
           closeFout()
           val newChunk = createChunkFile()
           _fout = new FileOutputStream(newChunk)
-          if(_fin == null) readRoll()
+          readRoll()
         }
       }
 
-      private def readRoll() {
-        val chunks = chunkFilesList()
-        if(!chunks.isEmpty) {
-          _currentFinFile = chunks.head
-          _fin = new FileInputStream(_currentFinFile)
-        }
+      // can be rolled only if current fin is closed i.e. _fin == null
+      private def readRoll() = {
+        if (_fin == null) {
+          val chunks = chunkFilesList()
+          println(s"read roll $ext ${chunks.map(_.getName).toList}")
+          if (!chunks.isEmpty) {
+            _currentFinFile = chunks.head
+            _fin = new FileInputStream(_currentFinFile)
+          }
+          !chunks.isEmpty
+        } else false
       }
 
       def chunkFilesList() = workdir.listFiles().filter(_.getName.endsWith("." + ext)).sortBy(_.getName)
@@ -395,6 +411,7 @@ object FSStore {
       private def createChunkFile() = {
         val newFile = new File(workdir, System.currentTimeMillis() + "." + ext)
         newFile.createNewFile()
+        currentBytesWrite = 0
         newFile
       }
 
@@ -413,12 +430,16 @@ object FSStore {
       }
 
       def completeFin() {
-        if(_fin != null) {
+        val chunks = chunkFilesList()
+        //check if we attempt to close null fin or fin is used as fout
+        if(_fin != null && chunks.size > 1) {
+          println(s"complete ${_currentFinFile.getName}")
           _fin.close()
           _fin = null
           _currentFinFile.delete()
           _currentFinFile = null
           currentBytesRead = 0
+
         }
       }
 
@@ -438,9 +459,9 @@ object FSStore {
       }
     }
 
-    private val NEWBIE = ".newbie"
-    private val FAILED = ".failed"
-    private val LOADS_FILE = "loads.log"
+    private val NEWBIE = "newbie"
+    private val FAILED = "failed"
+    private val LOADS_FILE = workdir.getAbsolutePath + "/loads.log"
 
     private def cleanTrash() {
       workdir.listFiles().filter(_.getName.endsWith(NEWBIE)).foreach(_.delete())
@@ -449,16 +470,19 @@ object FSStore {
 
     private def lastLoadBookmark(): Option[LoadBookmark] = {
       implicit val deserializer = loadsSerializer
-      val loadsReader = new Reader {
-        override def fin: FileInputStream = new FileInputStream(LOADS_FILE)
-      }
-      def iter(prevRead: Option[LoadBookmark]): Option[LoadBookmark] = {
-        loadsReader.read() match {
-          case Some((b,pos)) => iter(Some(b))
-          case None => prevRead
+      val loadsFile = new File(LOADS_FILE)
+      if (loadsFile.isFile) {
+        val loadsReader = new Reader {
+          override def fin: FileInputStream = new FileInputStream(LOADS_FILE)
         }
-      }
-      iter(None)
+        def iter(prevRead: Option[LoadBookmark]): Option[LoadBookmark] = {
+          loadsReader.read() match {
+            case Some((b, pos)) => iter(Some(b))
+            case None => prevRead
+          }
+        }
+        iter(None)
+      } else None
     }
 
     cleanTrash()
@@ -473,8 +497,14 @@ object FSStore {
       if (move) throw new IllegalStateException("should be move op!")
 
       val in = In(msg.id, msg.body.toArray)
-      if (fail) failedReadWriter.writeIn(in)
-      else newbieReadWriter.writeIn(in)
+      if (fail) {
+        println("write failed")
+        failedReadWriter.writeIn(in)
+      }
+      else {
+        println("write neebie")
+        newbieReadWriter.writeIn(in)
+      }
     }
 
     override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
@@ -490,8 +520,10 @@ object FSStore {
       //then load from newbie and save newbie bookmark
       val (failed, _) = failedReadWriter.load(quantity)
       val failedSize = failed.size
+      println(s"load failed $failedSize")
       if (failedSize < quantity) {
-        val (newbie, nBookmarkOpt) = failedReadWriter.load(quantity)
+        val (newbie, nBookmarkOpt) = newbieReadWriter.load(quantity - failedSize)
+        println(s"load newbie ${newbie.size}")
         nBookmarkOpt.foreach(loadsWriter.write(_))
         (failed ++ newbie).map(in => Envelope(in.id, in.body.length, in.body))
       } else failed.map(in => Envelope(in.id, in.body.length, in.body))
@@ -521,4 +553,7 @@ object FSStore {
    */
   def journalFsStoreWithCheckpoints(file: File, journalChunkSize: Int): Store =
     new JournalFsStoreWithCheckpoints(file, journalChunkSize)
+
+  def aheadLogFsStore(file: File, aheadLogChunkBytesSize: Int): Store =
+    new AheadLogFsStore(file, aheadLogChunkBytesSize)
 }
