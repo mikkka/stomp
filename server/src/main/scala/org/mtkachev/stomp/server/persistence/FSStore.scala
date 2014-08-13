@@ -318,7 +318,7 @@ object FSStore {
       private def initWriter() {
         val chunks = chunkFilesList()
         if(!chunks.isEmpty) {
-          _fout = new FileOutputStream(chunks.last)
+          _fout = new FileOutputStream(chunks.last, true)
           currentBytesWrite = chunks.last.length()
         }
       }
