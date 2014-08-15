@@ -531,6 +531,40 @@ object FSStore {
     }
   }
 
+  private class JournalAndAheadLogStore(workdir: File, journalChunkSize: Int, aheadLogChunkBytesSize: Int) extends Store {
+    val ahead = new AheadLogFsStore(workdir, aheadLogChunkBytesSize)
+    val jounral = new JournalFsStoreWithCheckpoints(workdir, journalChunkSize)
+
+    override def store(msg: Envelope, fail: Boolean, move: Boolean) {
+      if (move) {
+        jounral.store(msg, fail = fail, move = move)
+      } else {
+        ahead.store(msg, fail = fail, move = move)
+      }
+    }
+
+    override def store(msgList: Traversable[Envelope], fail: Boolean, move: Boolean) {
+      if (move) {
+        jounral.store(msgList, fail = fail, move = move)
+      } else {
+        ahead.store(msgList, fail = fail, move = move)
+      }
+    }
+
+    override def remove(id: Traversable[String]) {
+      jounral.remove(id)
+    }
+
+    override def load(quantity: Int): Vector[Envelope] = ahead.load(quantity)
+
+    override def init(): Vector[Envelope] = jounral.init()
+
+    override def shutdown() {
+      jounral.shutdown()
+      ahead.shutdown()
+    }
+  }
+
   /**
    * works only for infinite destination (i.e. no paging ever!)
    * @param file
