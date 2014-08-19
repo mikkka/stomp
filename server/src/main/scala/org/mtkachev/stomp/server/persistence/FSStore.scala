@@ -138,7 +138,7 @@ object FSStore {
     class BackgroundCheckpointWorker extends Runnable {
       var submitLock = new String("submitLock")
       var nextTask: (Option[File], Seq[File]) = null
-      @volatile var isRunning = false
+      @volatile var isRunning = true
 
       def submitNextTask(checkpoint: Option[File], journals: Seq[File]) {
         submitLock synchronized {
@@ -170,7 +170,7 @@ object FSStore {
     }
 
     val checkpointWorker = new BackgroundCheckpointWorker
-    val checkpointWorkerThread = new Thread(checkpointWorker)
+    val checkpointWorkerThread = new Thread(checkpointWorker, workdir.getName + "_checkpoint_worker")
     checkpointWorkerThread.start()
 
     /**
