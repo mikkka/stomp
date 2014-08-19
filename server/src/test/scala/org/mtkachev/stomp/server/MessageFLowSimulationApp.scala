@@ -7,7 +7,18 @@ import java.util.concurrent.{LinkedBlockingQueue, CountDownLatch}
 import org.mtkachev.stomp.server.Subscriber.{Stop => SubscriberStop, FrameMsg}
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.util.UUID
-import org.mtkachev.stomp.server.persistence.{BackgroundThreadPersisterWorker, StorePersisterWorker, InMemoryStore, Persister}
+import org.mtkachev.stomp.server.persistence._
+import java.nio.file.Files
+import java.io.File
+import org.mtkachev.stomp.server.codec.Ack
+import org.mtkachev.stomp.server.codec.Message
+import org.mtkachev.stomp.server.DestinationManager.Dispatch
+import org.mtkachev.stomp.server.codec.Commit
+import scala.Some
+import org.mtkachev.stomp.server.DestinationManager.Subscribe
+import org.mtkachev.stomp.server.Subscriber.FrameMsg
+import org.mtkachev.stomp.server.codec.Abort
+import org.mtkachev.stomp.server.codec.Begin
 
 /**
  * User: mick
@@ -29,23 +40,21 @@ object MessageFLowSimulationApp extends App with StrictLogging {
   val txStartProbability = args(7).toDouble // ex. 0.1
   val txSuccessProbability = args(8).toDouble  // ex 0.9
 
+  val storeDir = if (args.size == 10) new File(args(9))
+  else Files.createTempDirectory("MessageFLowSimulation_").toFile
+
   val mainRand = new Random()
 
   def time = System.currentTimeMillis()
 
   val subscriberSleep = ((1.0 * (messageSourceSleepMin + messageSourceSleepMax) / 2) * subscriberCount).toInt
 
+  val store = FSStore.journalAndAheadLogStore(storeDir, 32768, 1048576)
+  val prevMessages = store.init()
+  println(s"prev messages size: ${prevMessages.size}")
   val dm = new DestinationManager(destName =>
     new Destination(destName, 256,
-      new Persister(
-        new BackgroundThreadPersisterWorker(
-          new StorePersisterWorker(new InMemoryStore)))))
-/*
-  val dm = new DestinationManager(destName =>
-    new Destination(destName, 256,
-      new Persister(new StorePersisterWorker(new InMemoryStore))))
-*/
-
+      new Persister(new BackgroundThreadPersisterWorker(new StorePersisterWorker(store)))))
 
   dm.start()
 
@@ -116,30 +125,32 @@ object MessageFLowSimulationApp extends App with StrictLogging {
       logger.debug(s"client $id: recv ${msg}")
       msg match {
         case out: Message =>
-          if(acknowledge) taskQueue.add(AnswerTask(sleep, FrameMsg(Ack(out.messageId, txId, None))))
-          txSyncLock.synchronized {
-            if(txId.isEmpty) {
-              if(txStartRand.nextDouble() < txStartProbability) {
-                txId = Some(UUID.randomUUID().toString)
-                txMsgLef = txSizeRand.nextInt(txSizeMax - txSizeMin) + txSizeMin
-                logger.debug(s"client $id: begin tx ${txId.get} with size ${txMsgLef}")
-                taskQueue.add(AnswerTask(sleep, FrameMsg(Begin(txId.get, None))))
-              }
-            } else {
-              txMsgLef = txMsgLef - 1
-              if (txMsgLef <= 0) {
-                txMsgLef = 0
-                if(txSuccessRand.nextDouble() < txSuccessProbability) {
-                  logger.debug(s"client $id: commit tx ${txId.get}")
-                  taskQueue.add(AnswerTask(sleep, FrameMsg(Commit(txId.get, None))))
-                } else {
-                  logger.debug(s"client $id: abort tx ${txId.get}")
-                  taskQueue.add(AnswerTask(sleep, FrameMsg(Abort(txId.get, None))))
+          if(acknowledge) {
+            taskQueue.add(AnswerTask(sleep, FrameMsg(Ack(out.messageId, txId, None))))
+          } else
+            txSyncLock.synchronized {
+              if(txId.isEmpty) {
+                if(txStartRand.nextDouble() < txStartProbability) {
+                  txId = Some(UUID.randomUUID().toString)
+                  txMsgLef = txSizeRand.nextInt(txSizeMax - txSizeMin) + txSizeMin
+                  logger.debug(s"client $id: begin tx ${txId.get} with size ${txMsgLef}")
+                  taskQueue.add(AnswerTask(sleep, FrameMsg(Begin(txId.get, None))))
                 }
-                txId = Option.empty[String]
+              } else {
+                txMsgLef = txMsgLef - 1
+                if (txMsgLef <= 0) {
+                  txMsgLef = 0
+                  if(txSuccessRand.nextDouble() < txSuccessProbability) {
+                    logger.debug(s"client $id: commit tx ${txId.get}")
+                    taskQueue.add(AnswerTask(sleep, FrameMsg(Commit(txId.get, None))))
+                  } else {
+                    logger.debug(s"client $id: abort tx ${txId.get}")
+                    taskQueue.add(AnswerTask(sleep, FrameMsg(Abort(txId.get, None))))
+                  }
+                  txId = Option.empty[String]
+                }
               }
             }
-          }
           recvLatch.countDown()
       }
 
