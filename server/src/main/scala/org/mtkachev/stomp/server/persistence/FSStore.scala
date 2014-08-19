@@ -172,11 +172,19 @@ object FSStore {
     val checkpointWorker = new BackgroundCheckpointWorker
     val checkpointWorkerThread = new Thread(checkpointWorker)
     checkpointWorkerThread.start()
+
     /**
      * <timestamp>.journal
      * <timestamp>.checkpoint
      *
      */
+
+    if (workdir.isFile) {
+      throw new IllegalArgumentException("workdir is file! directory needed")
+    }  else if (!workdir.isDirectory) {
+      workdir.mkdirs()
+    }
+
     var journalStore: SimpleJournalFsStore = null
     var journalSize = 0
 
@@ -201,20 +209,15 @@ object FSStore {
     }
 
     override def init(): Vector[Envelope] = {
-      if (workdir.isFile) {
-        throw new IllegalArgumentException("workdir is file! directory needed")
-      } else if (workdir.isDirectory) {
-        val checkpointFile = lastChechpointFile
-        val journalFiles = listJournalFiles
+      val checkpointFile = lastChechpointFile
+      val journalFiles = listJournalFiles
 
-        val messages = scan(checkpointFile, journalFiles)
-        writeCheckpoint(messages, journalFiles)
-        journalStore = new SimpleJournalFsStore(createJournalFile)
-        messages.map(entry => Envelope(entry._1, entry._2.size, entry._2)).toVector
-      } else {
-        workdir.mkdirs()
-        Vector.empty
-      }
+      val messages = scan(checkpointFile, journalFiles)
+
+      writeCheckpoint(messages, journalFiles)
+      journalStore = new SimpleJournalFsStore(createJournalFile)
+
+      messages.map(entry => Envelope(entry._1, entry._2.size, entry._2)).toVector
     }
 
     private def writeCheckpoint(content: mutable.LinkedHashMap[String, Array[Byte]], journalToDel: Seq[File]) {
@@ -532,8 +535,8 @@ object FSStore {
   }
 
   private class JournalAndAheadLogStore(workdir: File, journalChunkSize: Int, aheadLogChunkBytesSize: Int) extends Store {
-    val ahead = new AheadLogFsStore(workdir, aheadLogChunkBytesSize)
     val jounral = new JournalFsStoreWithCheckpoints(workdir, journalChunkSize)
+    val ahead = new AheadLogFsStore(workdir, aheadLogChunkBytesSize)
 
     override def store(msg: Envelope, fail: Boolean, move: Boolean) {
       if (move) {
@@ -557,7 +560,9 @@ object FSStore {
 
     override def load(quantity: Int): Vector[Envelope] = ahead.load(quantity)
 
-    override def init(): Vector[Envelope] = jounral.init()
+    override def init(): Vector[Envelope] = {
+      jounral.init()
+    }
 
     override def shutdown() {
       jounral.shutdown()
@@ -580,4 +585,7 @@ object FSStore {
 
   def aheadLogFsStore(file: File, aheadLogChunkBytesSize: Int): Store =
     new AheadLogFsStore(file, aheadLogChunkBytesSize)
+
+  def journalAndAheadLogStore(file: File, journalChunkSize: Int, aheadLogChunkBytesSize: Int): Store =
+    new JournalAndAheadLogStore(file, journalChunkSize, aheadLogChunkBytesSize)
 }

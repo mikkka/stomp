@@ -8,6 +8,7 @@ import org.mtkachev.stomp.server.persistence.Persister.Load
 import org.mtkachev.stomp.server.persistence.Persister.Remove
 import org.mtkachev.stomp.server.persistence.Persister.StoreList
 import org.mtkachev.stomp.server.persistence.Persister.StoreOne
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
  * User: mick
@@ -43,7 +44,7 @@ class StorePersisterWorker(store: Store) extends PersisterWorker {
   }
 }
 
-class BackgroundThreadPersisterWorker(delegate: PersisterWorker) extends PersisterWorker {
+class BackgroundThreadPersisterWorker(delegate: PersisterWorker) extends PersisterWorker with StrictLogging {
   import java.util.concurrent.{TimeUnit, ArrayBlockingQueue}
 
   private val worker = new Runnable {
@@ -52,18 +53,25 @@ class BackgroundThreadPersisterWorker(delegate: PersisterWorker) extends Persist
 
     override def run(): Unit = {
       while (!isStopped) {
-        val (op, sender) = opsQueue.poll(100, TimeUnit.MILLISECONDS)
-        // null op is POISON PILL
-        if(op != null)
-          delegate.dispatchOp((op, sender))
-        else
-          isStopped = true
+        val opSender = opsQueue.poll(100, TimeUnit.MILLISECONDS)
+        if (opSender != null) {
+          val (op, sender) = opSender
+          // null op is POISON PILL
+          if (op != null)
+            try {
+              delegate.dispatchOp((op, sender))
+            } catch {
+              case e: Exception => logger.error("error in persiter", e)
+            }
+          else
+            isStopped = true
+        }
       }
     }
 
     def addOp(op: (Op, OutputChannel[Any])) {
       if(!isStopped)
-        opsQueue.add(op)
+        opsQueue.put(op)
     }
   }
 
