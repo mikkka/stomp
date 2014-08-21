@@ -13,7 +13,11 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
  * Time: 20:16:04
  */
 
-class Destination(val name: String, val maxQueueSize: Int, private val persister: Persister) extends Actor with StrictLogging {
+class Destination(
+                   val name: String,
+                   val maxQueueSize: Int,
+                   private val persister: Persister,
+                   initialMessages: Traversable[Envelope] = List.empty) extends Actor with StrictLogging {
   //current destination subscriptions
   private var subscriptions = HashSet.empty[Subscription]
   //subscriptions that are ready for message recv
@@ -32,6 +36,8 @@ class Destination(val name: String, val maxQueueSize: Int, private val persister
   def messageQueue = messages
 
   def time = System.currentTimeMillis()
+
+  messages = messages ++ initialMessages
 
   start()
 

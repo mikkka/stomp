@@ -51,10 +51,11 @@ object MessageFLowSimulationApp extends App with StrictLogging {
 
   val store = FSStore.journalAndAheadLogStore(storeDir, 100, 102400)
   val prevMessages = store.init()
+
   println(s"prev messages size: ${prevMessages.size}")
   val dm = new DestinationManager(destName =>
     new Destination(destName, 256,
-      new Persister(new BackgroundThreadPersisterWorker(new StorePersisterWorker(store)))))
+      new Persister(new BackgroundThreadPersisterWorker(new StorePersisterWorker(store))), prevMessages))
 
   dm.start()
 
