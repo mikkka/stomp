@@ -4,7 +4,7 @@ import actors.Actor
 import org.mtkachev.stomp.server.Destination._
 import scala.collection.immutable.{HashSet, Queue, Iterable}
 import org.mtkachev.stomp.server.persistence.{StorePersisterWorker, InMemoryStore, Persister}
-import org.mtkachev.stomp.server.persistence.Persister.{Remove, Load, StoreOne, StoreList}
+import org.mtkachev.stomp.server.persistence.Persister.{Remove, Load, StoreOne, StoreList, Stop => PStop}
 import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
@@ -64,6 +64,7 @@ class Destination(val name: String, val maxQueueSize: Int, private val persister
             tryToSend()
           }
         case msg: Stop =>
+          persister ! PStop()
           exit()
       }
     }
