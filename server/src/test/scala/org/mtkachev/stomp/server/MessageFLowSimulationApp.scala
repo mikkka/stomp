@@ -49,7 +49,7 @@ object MessageFLowSimulationApp extends App with StrictLogging {
 
   val subscriberSleep = ((1.0 * (messageSourceSleepMin + messageSourceSleepMax) / 2) * subscriberCount).toInt
 
-  val store = FSStore.journalAndAheadLogStore(storeDir, 32768, 1048576)
+  val store = FSStore.journalAndAheadLogStore(storeDir, 100, 102400)
   val prevMessages = store.init()
   println(s"prev messages size: ${prevMessages.size}")
   val dm = new DestinationManager(destName =>
