@@ -8,5 +8,5 @@ object RootBuild extends Build {
 
   lazy val server = Project(id = "stomp-server", base = file("server")).dependsOn(common)
 
-  lazy val client = Project(id = "stomp-server", base = file("server")).dependsOn(common)
+  lazy val client = Project(id = "stomp-client", base = file("client")).dependsOn(common)
 }
