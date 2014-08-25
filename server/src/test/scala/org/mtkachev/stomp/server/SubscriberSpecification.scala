@@ -8,10 +8,16 @@ import org.specs2.specification.Scope
 import org.specs2.execute.AsResult
 import org.specs2.execute.Result._
 
-import org.mtkachev.stomp.server.codec._
 import org.mtkachev.stomp.server.Matchers._
 import org.mtkachev.stomp.server.Subscriber.FrameMsg
 import org.mtkachev.stomp.server.persistence.{StorePersisterWorker, InMemoryStore, Persister}
+import org.mtkachev.stomp.codec._
+import org.mtkachev.stomp.codec.Send
+import org.mtkachev.stomp.codec.Message
+import scala.Some
+import org.mtkachev.stomp.codec.Subscribe
+import org.mtkachev.stomp.server.Subscriber.FrameMsg
+import org.mtkachev.stomp.codec.Receipt
 
 /**
  * User: mick

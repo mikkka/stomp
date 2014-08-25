@@ -1,8 +1,8 @@
 package org.mtkachev.stomp.server
 
-import codec.Frame
 import io.netty.channel.ChannelHandlerContext
 import io.netty.util.AttributeKey
+import org.mtkachev.stomp.codec.Frame
 
 trait TransportCtx {
   def write(msg: Frame)

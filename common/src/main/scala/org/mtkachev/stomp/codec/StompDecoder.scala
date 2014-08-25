@@ -1,4 +1,4 @@
-package org.mtkachev.stomp.server.codec
+package org.mtkachev.stomp.codec
 
 import collection.immutable.HashMap
 import org.mtkachev.scanetty.decode.Rules._

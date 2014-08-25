@@ -1,6 +1,5 @@
 package org.mtkachev.stomp.server
 
-import codec.Message
 import org.specs2.mutable._
 import org.specs2.mock.Mockito
 
@@ -9,6 +8,7 @@ import org.specs2.execute.{AsResult, StandardResults}
 import org.specs2.execute.Result._
 import org.specs2.specification.Scope
 import org.mtkachev.stomp.server.Matchers._
+import org.mtkachev.stomp.codec.Message
 
 class DestinationManagerSpecification extends Specification with Mockito {
   "queue manager" should {

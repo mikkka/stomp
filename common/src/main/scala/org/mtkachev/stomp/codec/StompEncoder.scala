@@ -1,4 +1,4 @@
-package org.mtkachev.stomp.server.codec
+package org.mtkachev.stomp.codec
 
 import io.netty.handler.codec.MessageToMessageEncoder
 import io.netty.channel.ChannelHandlerContext

@@ -1,7 +1,5 @@
 package org.mtkachev.stomp.server
 
-import codec.{MainEventHandler, StompDecoder, StompEncoder}
-
 import io.netty.bootstrap.ServerBootstrap
 
 import scala.collection.JavaConversions._
@@ -13,6 +11,7 @@ import com.typesafe.config.{Config, ConfigObject, ConfigFactory}
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import org.mtkachev.stomp.server.persistence._
 import java.io.File
+import org.mtkachev.stomp.codec.{StompEncoder, StompDecoder}
 
 
 object Launcher extends App with StrictLogging {

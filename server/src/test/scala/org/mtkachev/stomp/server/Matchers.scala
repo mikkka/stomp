@@ -1,8 +1,7 @@
 package org.mtkachev.stomp.server
 
 import org.specs2.matcher.{Expectable, Matcher}
-
-import org.mtkachev.stomp.server.codec.Message
+import org.mtkachev.stomp.codec.Message
 
 /**
  * User: mick

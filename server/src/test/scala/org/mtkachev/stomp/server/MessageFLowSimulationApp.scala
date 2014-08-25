@@ -1,6 +1,5 @@
 package org.mtkachev.stomp.server
 
-import org.mtkachev.stomp.server.codec._
 import scala.util.Random
 import org.mtkachev.stomp.server.DestinationManager.{Stop => DMStop, Subscribe, Dispatch}
 import java.util.concurrent.{LinkedBlockingQueue, CountDownLatch}
@@ -10,15 +9,19 @@ import java.util.UUID
 import org.mtkachev.stomp.server.persistence._
 import java.nio.file.Files
 import java.io.File
-import org.mtkachev.stomp.server.codec.Ack
-import org.mtkachev.stomp.server.codec.Message
 import org.mtkachev.stomp.server.DestinationManager.Dispatch
-import org.mtkachev.stomp.server.codec.Commit
 import scala.Some
 import org.mtkachev.stomp.server.DestinationManager.Subscribe
 import org.mtkachev.stomp.server.Subscriber.FrameMsg
-import org.mtkachev.stomp.server.codec.Abort
-import org.mtkachev.stomp.server.codec.Begin
+import org.mtkachev.stomp.codec._
+import org.mtkachev.stomp.codec.Message
+import scala.Some
+import org.mtkachev.stomp.server.Subscriber.FrameMsg
+import org.mtkachev.stomp.codec.Begin
+import org.mtkachev.stomp.server.DestinationManager.Dispatch
+import org.mtkachev.stomp.codec.Commit
+import org.mtkachev.stomp.server.DestinationManager.Subscribe
+import org.mtkachev.stomp.codec.Abort
 
 /**
  * User: mick

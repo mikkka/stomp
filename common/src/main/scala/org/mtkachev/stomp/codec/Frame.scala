@@ -1,4 +1,4 @@
-package org.mtkachev.stomp.server.codec
+package org.mtkachev.stomp.codec
 
 /**
  * User: mick

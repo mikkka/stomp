@@ -1,11 +1,19 @@
 package org.mtkachev.stomp.server
 
-import codec._
 import actors.Actor
 import java.util.UUID
-import org.mtkachev.stomp.server.Subscriber._
 import scala.None
 import scala.collection.mutable.ListBuffer
+import org.mtkachev.stomp.codec._
+import org.mtkachev.stomp.codec.Connected
+import org.mtkachev.stomp.server.Subscriber.Stop
+import org.mtkachev.stomp.codec.Message
+import org.mtkachev.stomp.server.Subscriber.Subscribed
+import scala.Some
+import org.mtkachev.stomp.server.Subscriber.FrameMsg
+import org.mtkachev.stomp.codec.Receipt
+import org.mtkachev.stomp.server.Subscriber.Receive
+import org.mtkachev.stomp.server.Subscriber.OnConnect
 
 /**
  * User: mick

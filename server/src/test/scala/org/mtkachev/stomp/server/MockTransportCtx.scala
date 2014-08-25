@@ -1,6 +1,6 @@
 package org.mtkachev.stomp.server
 
-import codec.Frame
+import org.mtkachev.stomp.codec.Frame
 
 
 class MockTransportCtx extends TransportCtx {

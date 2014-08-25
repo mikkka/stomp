@@ -1,13 +1,17 @@
-package org.mtkachev.stomp.server.codec
-
-import org.specs2.mutable._
-import org.specs2.specification.Scope
+package org.mtkachev.stomp.codec
 
 import io.netty.channel.embedded.EmbeddedByteChannel
 
 import io.netty.buffer.{ByteBuf, Unpooled}
 import io.netty.util.CharsetUtil
 import collection.mutable.ListBuffer
+import scala.Some
+
+import org.specs2.mutable._
+import org.specs2.mock.Mockito
+import org.specs2.execute.{AsResult, StandardResults}
+import org.specs2.execute.Result._
+import org.specs2.specification.Scope
 
 
 /**

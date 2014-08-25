@@ -1,7 +1,9 @@
-package org.mtkachev.stomp.server.codec
+package org.mtkachev.stomp.server
 
 import io.netty.channel._
-import org.mtkachev.stomp.server._
+import org.mtkachev.stomp.codec._
+import org.mtkachev.stomp.codec.Connect
+import org.mtkachev.stomp.codec.Disconnect
 
 class MainEventHandler(val subscriberManager: SubscriberManager, val queueManager: DestinationManager)
   extends ChannelInboundMessageHandlerAdapter[InFrame] {
