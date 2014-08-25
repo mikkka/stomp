@@ -7,4 +7,7 @@ object RootBuild extends Build {
 
   lazy val server = Project(id = "stomp-server",
     base = file("server"))
+
+  lazy val common = Project(id = "stomp-common",
+    base = file("common"))
 }
