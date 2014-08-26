@@ -70,6 +70,31 @@ object FrameBuilder {
         }
       case "DISCONNECT" =>
         Disconnect(receipt)
+
+      case "CONNECTED" =>
+        headers.get("session") match {
+          case Some(sessionId) =>
+            Connected(sessionId)
+          case _ =>
+            createErrorFrame(messageType, headers, body)
+        }
+      case "MESSAGE" =>
+        (headers.get("destination"), headers.get("message-id"), headers.get("content-length")) match {
+          case (Some(destination), Some(messageId), Some(contentLength)) =>
+            Message(destination, messageId, contentLength.toInt, body)
+          case _ =>
+            createErrorFrame(messageType, headers, body)
+        }
+      case "RECEIPT" =>
+        headers.get("receipt") match {
+          case Some(receipt) =>
+            Receipt(receipt)
+          case _ =>
+            createErrorFrame(messageType, headers, body)
+        }
+      case "ERROR" =>
+        createErrorFrame(messageType, headers, body)
+
       case _ => createErrorFrame(messageType, headers, body)
     }
   }
