@@ -47,7 +47,7 @@ class StompEncoder extends MessageToMessageEncoder[AnyRef] {
           copiedBuffer(sb, charset)
 
         case f: Connect =>
-          sb.append("CONNECTED\n").
+          sb.append("CONNECT\n").
             append("login: ").append(f.login).append("\n").
             append("passcode: ").append(f.password).append("\n").
             append("\n").append('\0')
@@ -69,6 +69,7 @@ class StompEncoder extends MessageToMessageEncoder[AnyRef] {
           f.id.foreach(id => sb.append("id: ").append(id).append("\n"))
           if (f.ackMode) sb.append("ack: ").append("client").append("\n")
           sb.append("\n").append('\0')
+          copiedBuffer(sb, charset)
 
         case f: UnSubscribe =>
           sb.append("UNSUBSCRIBE\n").
@@ -76,24 +77,28 @@ class StompEncoder extends MessageToMessageEncoder[AnyRef] {
           f.receipt.foreach(receipt => sb.append("receipt: ").append(receipt).append("\n"))
           f.id.foreach(id => sb.append("id: ").append(id).append("\n"))
           sb.append("\n").append('\0')
+          copiedBuffer(sb, charset)
 
         case f: Begin =>
           sb.append("BEGIN\n").
             append("transaction: ").append(f.transactionId).append("\n")
           f.receipt.foreach(receipt => sb.append("receipt: ").append(receipt).append("\n"))
           sb.append("\n").append('\0')
+          copiedBuffer(sb, charset)
 
         case f: Commit =>
           sb.append("COMMIT\n").
             append("transaction: ").append(f.transactionId).append("\n")
           f.receipt.foreach(receipt => sb.append("receipt: ").append(receipt).append("\n"))
           sb.append("\n").append('\0')
+          copiedBuffer(sb, charset)
 
         case f: Abort =>
           sb.append("ABORT\n").
             append("transaction: ").append(f.transactionId).append("\n")
           f.receipt.foreach(receipt => sb.append("receipt: ").append(receipt).append("\n"))
           sb.append("\n").append('\0')
+          copiedBuffer(sb, charset)
 
         case f: Ack =>
           sb.append("ACK\n").
@@ -101,9 +106,11 @@ class StompEncoder extends MessageToMessageEncoder[AnyRef] {
           f.transactionId.foreach(transactionId => sb.append("transaction: ").append(transactionId).append("\n"))
           f.receipt.foreach(receipt => sb.append("receipt: ").append(receipt).append("\n"))
           sb.append("\n").append('\0')
+          copiedBuffer(sb, charset)
 
         case f: Disconnect =>
           sb.append("DISCONNECT\n").append("\n").append('\0')
+          copiedBuffer(sb, charset)
       }
     }
   }
